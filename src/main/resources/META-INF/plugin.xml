@@ -1,0 +1,66 @@
+<idea-plugin>
+    <id>com.jschelert.resource-navigator</id>
+    <name>Resource Navigator</name>
+    <vendor>James Schelert</vendor>
+    <description><![CDATA[
+        Makes local file paths and URLs in supported Python string literals directly navigable.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.python</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <gotoDeclarationHandler
+                implementation="com.jschelert.resourcenavigator.navigation.ResourceGotoDeclarationHandler"
+                order="first"/>
+
+        <psi.referenceContributor
+                language="Python"
+                implementation="com.jschelert.resourcenavigator.navigation.ResourceReferenceContributor"/>
+
+        <localInspection
+                language="Python"
+                shortName="MissingResource"
+                displayName="Unresolved Resource Reference"
+                groupName="Resource Navigator"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.jschelert.resourcenavigator.inspection.MissingResourceInspection"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                id="com.jschelert.resource-navigator.settings"
+                displayName="Resource Navigator"
+                instance="com.jschelert.resourcenavigator.config.ResourceNavigatorConfigurable"/>
+
+        <applicationService
+                serviceImplementation="com.jschelert.resourcenavigator.config.ResourceNavigatorSettings"/>
+
+        <lang.documentationProvider
+                language="Python"
+                implementationClass="com.jschelert.resourcenavigator.preview.ResourceDocumentationProvider"/>
+
+    </extensions>
+
+    <actions>
+        <action id="ResourceNavigator.OpenResource"
+                class="com.jschelert.resourcenavigator.actions.OpenResourceAction"
+                text="Open Resource"
+                description="Open the resource under the caret">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="ResourceNavigator.RevealResource"
+                class="com.jschelert.resourcenavigator.actions.RevealResourceAction"
+                text="Reveal Resource in File Manager"
+                description="Reveal the resource under the caret">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="ResourceNavigator.CopyFullPath"
+                class="com.jschelert.resourcenavigator.actions.CopyFullPathAction"
+                text="Copy Resource Full Path"
+                description="Copy the resolved absolute path">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

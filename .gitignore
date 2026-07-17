@@ -1,0 +1,32 @@
+# IntelliJ IDEA / JetBrains
+../.idea/
+*.iml
+out/
+
+# Gradle
+.gradle/
+build/
+
+# Kotlin / Java build output
+bin/
+classes/
+
+# Local Gradle configuration
+gradle.properties.local
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Plugin sandbox directories
+sandbox/
+run/

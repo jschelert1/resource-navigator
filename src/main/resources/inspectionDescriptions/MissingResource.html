@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unresolved Resource Reference</title>
+</head>
+
+<body>
+
+Reports local resource references that cannot be resolved.
+
+<p>
+    This inspection detects missing files referenced from supported Python string
+    literals. Resource Navigator recognizes configured resource fields,
+    <code>pathlib.Path(...)</code> constructors, supported resource extensions, and
+    other configured resource contexts.
+</p>
+
+<p>
+    Both project-relative and absolute filesystem paths are checked.
+    HTTP and HTTPS URLs are intentionally ignored.
+</p>
+
+<p>
+    Resolution behavior and recognized resource extensions can be configured under
+    <b>Settings | Tools | Resource Navigator</b>.
+</p>
+
+</body>
+</html>

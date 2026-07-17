@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="40"
+     height="40"
+     viewBox="0 0 40 40">
+
+    <!-- Resource -->
+    <rect x="4"
+          y="8"
+          width="16"
+          height="16"
+          rx="2"
+          ry="2"
+          fill="none"
+          stroke="#6C8EBF"
+          stroke-width="2"/>
+
+    <!-- Connector -->
+    <line x1="20"
+          y1="16"
+          x2="30"
+          y2="16"
+          stroke="#6C8EBF"
+          stroke-width="2"/>
+
+    <!-- Arrow -->
+    <polygon points="30,12 36,16 30,20"
+             fill="#6C8EBF"/>
+</svg>
