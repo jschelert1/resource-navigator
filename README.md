@@ -6,7 +6,7 @@ The plugin integrates with **Go to Declaration (Ctrl+Click)**, **Quick Documenta
 
 ---
 
-# Version 1.1.0 Milestone
+# Version 1.1.1 Milestone
 
 ## Implemented
 
@@ -25,6 +25,8 @@ The plugin integrates with **Go to Declaration (Ctrl+Click)**, **Quick Documenta
 - Quick Documentation metadata for resources.
 - Configurable resource field names.
 - Configurable recognized resource extensions.
+- Glob-pattern detection to prevent unsupported wildcard references from becoming navigation links.
+- Expanded and reorganized regression tests for supported and unsupported resource references.
 
 ## Planned Version 1.2 Features
 
