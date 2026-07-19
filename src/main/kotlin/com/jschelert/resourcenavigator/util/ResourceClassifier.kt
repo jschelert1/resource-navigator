@@ -90,6 +90,10 @@ object ResourceClassifier {
             return false
         }
 
+        if (isGlobPattern(value)) {
+            return false
+        }
+
         val settings =
             ResourceNavigatorSettings.getInstance()
 
@@ -127,6 +131,20 @@ object ResourceClassifier {
         runCatching {
             URI(value).scheme?.lowercase() in urlSchemes
         }.getOrDefault(false)
+
+    /**
+     * Return true if the supplied string appears to represent a
+     * filesystem glob pattern rather than a concrete resource path.
+     *
+     * Glob patterns identify collections of matching files instead of
+     * a single navigable resource and are therefore ignored by
+     * Resource Navigator.
+     */
+    private fun isGlobPattern(
+        value: String,
+    ): Boolean =
+        value.contains('*') ||
+                value.contains('?')
 
     /**
      * Return the lowercase filename extension.
