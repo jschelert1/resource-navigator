@@ -3,7 +3,16 @@
     <name>Resource Navigator</name>
     <vendor>James Schelert</vendor>
     <description><![CDATA[
-        Makes local file paths and URLs in supported Python string literals directly navigable.
+    Makes local file paths and URLs in supported Python string expressions directly navigable.
+
+    Resource Navigator supports ordinary and adjacent string literals, constant
+    f-string interpolation, compile-time constant references and concatenation,
+    pathlib constructors, and bracketed resource citations.
+
+    Local resources can be resolved against the source-file directory or project
+    root. The plugin also provides missing-resource inspection, Quick Documentation,
+    configurable resource extensions, and actions for opening, revealing, and
+    copying resolved resources.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -47,19 +56,19 @@
         <action id="ResourceNavigator.OpenResource"
                 class="com.jschelert.resourcenavigator.actions.OpenResourceAction"
                 text="Open Resource"
-                description="Open the resource under the caret">
+                description="Open the resolved resource under the caret">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
         <action id="ResourceNavigator.RevealResource"
                 class="com.jschelert.resourcenavigator.actions.RevealResourceAction"
                 text="Reveal Resource in File Manager"
-                description="Reveal the resource under the caret">
+                description="Reveal the resolved local resource under the caret">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
         <action id="ResourceNavigator.CopyFullPath"
                 class="com.jschelert.resourcenavigator.actions.CopyFullPathAction"
                 text="Copy Resource Full Path"
-                description="Copy the resolved absolute path">
+                description="Copy the resolved absolute resource path">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
     </actions>

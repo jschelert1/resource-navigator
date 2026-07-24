@@ -1,6 +1,7 @@
 package com.jschelert.resourcenavigator.navigation
 
 import com.intellij.ide.BrowserUtil
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -28,6 +29,7 @@ import java.awt.Desktop
  * • Opens all remaining resources inside the IDE editor.
  * • Supports explicit IDE, Browser, and External navigation modes selected
  *   from the Choose Declaration dialog.
+ * • Selects local directories in the IDE Project view.
  *
  * Responsibilities
  * ----------------
@@ -75,7 +77,7 @@ object ResourceDispatcher {
         when (target.kind) {
 
             ResourceKind.URL ->
-                openUrl(target.rawValue)
+                openUrl(target.sourceValue)
 
             ResourceKind.LOCAL_FILE ->
                 openDefault(project, target)
@@ -155,7 +157,7 @@ object ResourceDispatcher {
         when (target.kind) {
 
             ResourceKind.URL ->
-                BrowserUtil.browse(target.rawValue)
+                BrowserUtil.browse(target.sourceValue)
 
             ResourceKind.LOCAL_FILE ->
                 target.virtualFile?.let { file ->
@@ -168,7 +170,10 @@ object ResourceDispatcher {
     }
 
     /**
-     * Open a local file in the IDE editor.
+     * Open a local resource using IDE-oriented navigation.
+     *
+     * Files are opened in the IDE editor, while directories are opened using
+     * the operating system's file manager.
      */
     private fun openInIde(
         project: Project?,
@@ -178,13 +183,30 @@ object ResourceDispatcher {
         project ?: return
         file ?: return
 
+        //
+        // Select directories within the IDE project view.
+        //
+        if (file.isDirectory) {
+
+            openExternally(file)
+
+            return
+        }
+
+        //
+        // Open regular files in the IDE editor.
+        //
         FileEditorManager
             .getInstance(project)
             .openFile(file, true)
     }
 
     /**
-     * Open a local file using the operating system's default application.
+     * Open a local resource using the operating system's default application.
+     *
+     * External launching is delayed briefly so modifier keys used to invoke
+     * navigation, such as Ctrl+Click, can be released before the target
+     * application starts.
      */
     private fun openExternally(
         file: VirtualFile?,
@@ -195,8 +217,19 @@ object ResourceDispatcher {
         if (!Desktop.isDesktopSupported())
             return
 
-        Desktop
-            .getDesktop()
-            .open(file.toNioPath().toFile())
+        //
+        // Delay external launch briefly so navigation modifier keys can be
+        // released before the target application starts.
+        //
+        ApplicationManager
+            .getApplication()
+            .executeOnPooledThread {
+
+                Thread.sleep(150)
+
+                Desktop
+                    .getDesktop()
+                    .open(file.toNioPath().toFile())
+            }
     }
 }

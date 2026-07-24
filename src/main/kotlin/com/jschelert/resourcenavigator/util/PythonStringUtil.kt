@@ -100,6 +100,15 @@ object PythonStringUtil {
         }
 
     /**
+     * Return the starting offset of the contents of a Python string literal,
+     * excluding prefixes and surrounding quotation marks.
+     */
+    fun contentStartOffset(
+        literal: PyStringLiteralExpression,
+    ): Int =
+        contentRange(literal).startOffset
+
+    /**
      * Return the range occupied by the contents of a Python string literal,
      * excluding prefixes and surrounding quotation marks.
      */
@@ -118,24 +127,42 @@ object PythonStringUtil {
         text: String,
     ): TextRange {
 
+        //
+        // Locate the opening quote after any Python string prefix.
+        //
         val quoteStart =
             text.indexOfFirst {
                 it == '"' || it == '\''
             }
 
+        //
+        // Reject text containing no recognizable string delimiter.
+        //
         if (quoteStart < 0)
             return TextRange.EMPTY_RANGE
 
+        //
+        // Determine whether the literal uses single or triple quotes.
+        //
         val quoteLength =
             quoteLength(text)
 
+        //
+        // Advance beyond the opening quote sequence.
+        //
         val contentStart =
             quoteStart + quoteLength
 
+        //
+        // Exclude the closing quote sequence while preventing an invalid range.
+        //
         val contentEnd =
             (text.length - quoteLength)
                 .coerceAtLeast(contentStart)
 
+        //
+        // Return the range containing only the Python string contents.
+        //
         return TextRange(
             contentStart,
             contentEnd,
@@ -143,28 +170,66 @@ object PythonStringUtil {
     }
 
     /**
-     * Return the starting offset of the contents of a Python string literal,
-     * excluding prefixes and surrounding quotation marks.
-     */
-    fun contentStartOffset(
-        literal: PyStringLiteralExpression,
-    ): Int =
-        contentRange(literal).startOffset
-
-    /**
-     * Return the contents of a Python string literal, excluding prefixes and
-     * surrounding quotation marks.
+     * Return the source contents of a Python string literal, excluding prefixes
+     * and surrounding quotation marks.
+     *
+     * Unlike PythonStringResolver, this function does not evaluate or reconstruct
+     * the semantic compile-time value of the Python expression. It extracts the
+     * contents directly from the original PSI source text.
+     *
+     * This distinction is important for IntelliJ editor/navigation behavior.
+     * In particular, preserving the original source-oriented contents currently
+     * allows the Go To Declaration/navigation pipeline to retain correct
+     * correspondence with multiline and adjacent Python string literals.
+     *
+     * Passing only the reconstructed compile-time value through that pipeline
+     * was observed to resolve the resource correctly while causing IntelliJ
+     * Ctrl-hover highlighting to lose the complete multiline source range.
+     * The underlying IntelliJ behavior is not yet fully understood, so this
+     * source-preserving representation is intentionally retained.
+     *
+     * Example
+     * -------
+     *
+     *     Python source:
+     *
+     *         path = (
+     *             "docs/very-long-"
+     *             "manual.pdf"
+     *         )
+     *
+     *     contentText(literal):
+     *
+     *         docs/very-long-"
+     *             "manual.pdf
+     *
+     *     PythonStringResolver:
+     *
+     *         docs/very-long-manual.pdf
+     *
+     * The first representation preserves physical source structure for PSI and
+     * editor operations; the second represents the semantic Python value used
+     * for resource classification and resolution.
      */
     fun contentText(
         literal: PyStringLiteralExpression,
     ): String {
 
+        //
+        // Determine the source range inside the literal's outer delimiters.
+        //
         val range =
             contentRange(literal)
 
+        //
+        // Return an empty value when no valid content range is available.
+        //
         if (range.isEmpty)
             return ""
 
+        //
+        // Extract the original source-oriented contents without evaluation.
+        //
         return literal.text.substring(
             range.startOffset,
             range.endOffset,

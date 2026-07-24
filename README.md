@@ -1,56 +1,119 @@
 # Resource Navigator
 
-Resource Navigator is a PyCharm plugin that transforms Python string literals containing local files, project resources, and URLs into first-class IDE navigation targets.
+Resource Navigator is a PyCharm plugin that transforms Python resource strings and compile-time resource expressions containing local files, project resources, and URLs into first-class IDE navigation targets.
 
-The plugin integrates with **Go to Declaration (Ctrl+Click)**, **Quick Documentation**, **editor context actions**, and **resource inspections** so that images, PDFs, Office documents, source files, web pages, and other resources can be navigated as naturally as Python symbols.
+The plugin integrates with **Go to Declaration (Ctrl+Click)**, **Quick Documentation**, **editor context actions**, and **resource inspections** so that images, PDFs, Office documents, source files, web pages, directories, and other resources can be navigated as naturally as Python symbols.
 
 ---
 
-# Version 1.1.1 Milestone
+# Version 2.0.0 Milestone
+
+Version 2.0 introduces compile-time Python resource evaluation, substantially expanding Resource Navigator beyond direct string-literal navigation.
+
+Resource paths can now be reconstructed from adjacent literals, constant f-string expressions, constant references, binary string/path expressions, and supported `pathlib` constructors while preserving normal PyCharm declaration navigation for symbolic Python references.
 
 ## Implemented
 
-- Ctrl-click / Go to Declaration for recognized local resource strings.
-- `pathlib.Path(...)`, `PurePath`, `PureWindowsPath`, and `PurePosixPath` recognition.
-- Keyword argument and assignment field recognition.
-- Relative resolution against the current Python file directory and project root.
-- Absolute Windows, UNC, and platform-native path resolution.
-- HTTP/HTTPS URL navigation.
-- Multiple navigation targets where appropriate (IDE, browser, or external application).
-- Editor context actions:
-    - Open Resource
-    - Reveal in File Manager
-    - Copy Full Path
-- Missing-resource inspection.
-- Quick Documentation metadata for resources.
-- Configurable resource field names.
-- Configurable recognized resource extensions.
-- Glob-pattern detection to prevent unsupported wildcard references from becoming navigation links.
-- Expanded and reorganized regression tests for supported and unsupported resource references.
+* Ctrl-click / Go to Declaration for recognized local resource strings.
+* Compile-time Python resource expression evaluation.
+* Adjacent string-literal concatenation.
+* Constant f-string interpolation.
+* Recursive compile-time constant resolution.
+* Binary `+` and `/` resource expressions.
+* Parenthesized compile-time expressions.
+* Circular-reference protection during constant evaluation.
+* `pathlib.Path(...)`, `PurePath`, `PureWindowsPath`, and `PurePosixPath` recognition and evaluation.
+* Preservation of the original resource literal as the Resource Navigator hyperlink while surrounding Python references continue to use normal PyCharm declaration navigation.
+* Relative resolution against the current Python file directory and project root.
+* Absolute Windows, UNC, and platform-native path resolution.
+* Direct navigation to absolute directories and extensionless resources.
+* HTTP/HTTPS URL navigation.
+* Extension-based navigation policy for IDE, browser, and external applications.
+* Native file-manager navigation for directories.
+* Editor context actions:
 
-## Planned Version 1.2 Features
+  * Open Resource
+  * Reveal in File Manager
+  * Copy Full Path
+* Missing-resource inspection.
+* Quick Documentation metadata for resources.
+* Configurable resource field names.
+* Configurable recognized resource extensions.
+* Configurable broad path-like value recognition.
+* Glob-pattern detection to prevent unsupported wildcard references from becoming navigation links.
+* Bracketed resource citations within Python string literals.
+* Expanded and reorganized regression tests for supported and unsupported resource references.
 
-### Navigation
+---
 
-- Improved dictionary-key recognition (for example `{"logo": "images/logo.svg"}`).
-- Multi-root and content-root resource resolution.
-- Additional Python syntax recognition.
+# Compile-Time Resource Evaluation
 
-### Editor Integration
+Resource Navigator evaluates supported Python expressions when their values can be determined statically.
 
-- Alt-Enter intention actions.
-- File chooser quick fix for missing resources.
+The evaluation model is organized into four capability tiers.
 
-### Preview
+## Tier 1 — Direct String Literals
 
-- SVG thumbnail rendering.
-- PNG/JPEG image previews.
-- Richer Quick Documentation previews.
+Ordinary and raw Python string literals are recognized directly.
 
-### Testing
+```python
+manual = "docs/manual.pdf"
 
-- IntelliJ Platform test fixture integration.
-- Expanded automated unit and integration test coverage.
+image = r"C:\Projects\App\images\logo.png"
+```
+
+## Tier 2 — Adjacent String Literals
+
+Adjacent Python literals are reconstructed into their complete semantic value.
+
+```python
+paper = (
+    "docs/research/"
+    "important-paper.pdf"
+)
+```
+
+## Tier 3 — Constant F-Strings
+
+F-strings containing compile-time constant expressions can be evaluated.
+
+```python
+VERSION = "v2.0"
+
+manual = f"docs/{VERSION}/manual.pdf"
+```
+
+Escaped f-string braces remain supported as normal literal content.
+
+## Tier 4 — Compile-Time Expressions
+
+Resource Navigator recursively evaluates supported constant references, binary expressions, parentheses, and `pathlib` wrappers.
+
+```python
+BASE_PATH = r"C:\Projects\App"
+
+icon = (
+    BASE_PATH + r"\icons\info.svg"
+)
+
+icon_path = Path(
+    BASE_PATH + r"\icons\info.svg"
+)
+```
+
+Resource literals can participate on either side of a supported binary expression:
+
+```python
+INFO_SVG = r"\icons\info.svg"
+
+icon = (
+    r"C:\Projects\App" + INFO_SVG
+)
+```
+
+The resource literal remains the Resource Navigator hyperlink, while symbolic components such as `BASE_PATH` and `INFO_SVG` retain their normal PyCharm declaration-navigation behavior.
+
+Unsupported or dynamically evaluated Python expressions are left to normal PyCharm behavior rather than being guessed by Resource Navigator.
 
 ---
 
@@ -58,16 +121,39 @@ The plugin integrates with **Go to Declaration (Ctrl+Click)**, **Quick Documenta
 
 Current built-in support includes:
 
-- Images (`svg`, `png`, `jpg`, `jpeg`, `gif`, `webp`, `bmp`, `ico`)
-- Markdown
-- HTML / HTM / MHTML
-- PDF
-- Microsoft Office documents
-- OpenDocument files
-- Draw.io and Visio diagrams
-- Python source files
-- Text, CSV, JSON, XML, YAML, TOML
-- HTTP / HTTPS URLs
+* Images (`svg`, `png`, `jpg`, `jpeg`, `gif`, `webp`, `bmp`, `ico`)
+* Markdown
+* HTML / HTM / MHTML
+* PDF
+* Microsoft Office documents
+* OpenDocument files
+* Draw.io and Visio diagrams
+* Python source files and notebooks
+* Text, CSV, TSV, JSON, XML, YAML, TOML
+* HTTP / HTTPS URLs
+* Absolute directories
+* Absolute extensionless filesystem resources
+
+---
+
+# Resource Navigation Policy
+
+Resource Navigator selects the preferred navigation mechanism according to the resource type.
+
+| Resource                              | Default Navigation                       |
+|---------------------------------------|------------------------------------------|
+| HTML / HTM / MHTML                    | Browser                                  |
+| PDF                                   | External application                     |
+| Word documents                        | Microsoft Word / associated application  |
+| Excel workbooks                       | Microsoft Excel / associated application |
+| PowerPoint presentations              | PowerPoint / associated application      |
+| Images                                | External application                     |
+| Python / text / structured-data files | PyCharm                                  |
+| Directories                           | Native file manager                      |
+| HTTP / HTTPS URLs                     | Browser                                  |
+| Unregistered file types               | Operating-system associated application  |
+
+This keeps IDE navigation explicit rather than treating PyCharm as the fallback application for arbitrary resource types.
 
 ---
 
@@ -75,11 +161,11 @@ Current built-in support includes:
 
 This project currently targets:
 
-- PyCharm 2025.2.6.1 (Build 252)
-- JDK 21
-- Kotlin 2.3.20
-- IntelliJ Platform Gradle Plugin 2.13.1
-- Gradle 9.4.1 (or compatible)
+* PyCharm 2025.2.6.1 (Build 252)
+* JDK 21
+* Kotlin 2.3.20
+* IntelliJ Platform Gradle Plugin 2.13.1
+* Gradle 9.4.1 (or compatible)
 
 ---
 
@@ -90,9 +176,9 @@ This project currently targets:
 3. Allow Gradle to download the PyCharm SDK and PythonCore dependency.
 4. Run the Gradle task:
 
-```text
-runIde
-```
+    ```text
+    runIde
+    ```
 
 5. In the sandbox PyCharm instance, open `example.py` together with real files matching its resource paths.
 6. Ctrl-click any recognized resource or URL.
@@ -113,15 +199,19 @@ build/distributions/
 
 # Resource Recognition
 
-A Python string is treated as a resource when at least one of the following conditions is true:
+A resolved Python value is treated as a resource candidate when supported Resource Navigator classification rules identify it as a URL or filesystem resource.
 
-1. It belongs to a configured keyword argument or assignment (for example `image_file=...`).
-2. It is the argument of `Path(...)`, `PurePath(...)`, or a related pathlib constructor.
-3. It has a configured resource extension and appears to represent a filesystem path.
-4. The optional "Accept Any Existing Path" mode is enabled.
-5. It is an HTTP or HTTPS URL and URL navigation is enabled.
+Resource candidates include:
 
-The default recognition rules are intentionally conservative to avoid treating ordinary string literals as navigable resources.
+1. Arguments to supported `Path(...)`, `PurePath(...)`, `PureWindowsPath(...)`, and `PurePosixPath(...)` constructors.
+2. Values with configured resource extensions that resemble filesystem paths.
+3. Absolute Windows, UNC, and platform-native filesystem paths regardless of filename extension.
+4. Broader path-like values when **Accept Any Path-Like Value** is enabled.
+5. HTTP or HTTPS URLs when URL navigation is enabled.
+
+Compile-time resource expressions are evaluated before classification so that constants, f-strings, binary expressions, and other supported static forms can participate in the same resource-resolution pipeline.
+
+Glob patterns and unsupported dynamic expressions are intentionally excluded to minimize false-positive navigation.
 
 ---
 
@@ -135,24 +225,33 @@ Settings → Tools → Resource Navigator
 
 Current configuration options include:
 
-- Recognized resource field names.
-- Recognized file extensions.
-- Relative path resolution options.
-- URL navigation.
-- Existing-path recognition.
-- Missing-resource inspection behavior.
+* Recognized resource field names.
+* Recognized file extensions.
+* Relative path resolution options.
+* URL navigation.
+* Broad path-like value recognition.
+* Missing-resource inspection behavior.
 
 ---
 
 # Architecture Overview
 
-Resource Navigator processes resources through a staged navigation pipeline:
+Resource Navigator processes Python resources through a staged evaluation and navigation pipeline:
 
 ```text
 Python String Literal
         │
         ▼
 PythonResourceContext
+        │
+        ▼
+Compile-Time Evaluation Scope
+        │
+        ▼
+PythonStringResolver
+        │
+        ▼
+PythonResolvedString
         │
         ▼
 ResourceClassifier
@@ -170,20 +269,49 @@ ResourceNavigationTargetFactory
 ResourceDispatcher
         │
         ▼
-IDE / Browser / External Application
+IDE / Browser / External Application / File Manager
 ```
 
 Primary components include:
 
-- **PythonResourceContext** — Determines keyword, assignment, and pathlib context.
-- **ResourceClassifier** — Determines whether a string represents a navigable resource.
-- **ResourceResolver** — Resolves local filesystem resources.
-- **ResourceExtensionRegistry** — Central registry of recognized resource extensions and navigation behavior.
-- **ResourceNavigationTargetFactory** — Creates IDE navigation targets.
-- **ResourceDispatcher** — Opens resources in the IDE, browser, or external applications.
-- **MissingResourceInspection** — Reports unresolved resources.
-- **ResourceDocumentationProvider** — Supplies Quick Documentation metadata.
-- **ResourceNavigatorSettings** — Persists user configuration.
+* **PythonResourceContext** — Determines supported Python syntax context and compile-time evaluation scope.
+* **PythonStringResolver** — Reconstructs supported compile-time Python resource expressions.
+* **PythonResolvedString** — Preserves both source and resolved semantic string values.
+* **PythonConstantStringEvaluator** — Recursively evaluates supported compile-time Python expressions and constants.
+* **ResourceClassifier** — Determines whether a resolved semantic value represents a navigable resource.
+* **ResourceResolver** — Resolves local filesystem resources and URLs.
+* **ResourceExtensionRegistry** — Central registry of recognized resource extensions and preferred navigation behavior.
+* **ResourceNavigationTargetFactory** — Creates the navigation target appropriate for the resolved resource.
+* **ResourceDispatcher** — Opens resources in the IDE, browser, external application, or native file manager.
+* **MissingResourceInspection** — Reports unresolved resource candidates.
+* **ResourceDocumentationProvider** — Supplies Quick Documentation metadata.
+* **ResourceNavigatorSettings** — Persists user configuration.
+
+---
+
+# Planned Features
+
+### Navigation
+
+* Improved dictionary-key recognition.
+* Multi-root and content-root resource resolution.
+* Additional Python syntax recognition where deterministic compile-time evaluation is possible.
+
+### Editor Integration
+
+* Alt-Enter intention actions.
+* File chooser quick fix for missing resources.
+
+### Preview
+
+* SVG thumbnail rendering.
+* PNG/JPEG image previews.
+* Richer Quick Documentation previews.
+
+### Testing
+
+* IntelliJ Platform test fixture integration.
+* Expanded automated unit and integration test coverage.
 
 ---
 
@@ -191,6 +319,8 @@ Primary components include:
 
 Resource Navigator is currently an actively developed project.
 
-The core navigation engine is fully operational and supports local files, project resources, and URLs throughout the PyCharm editor. Development is currently focused on richer previews, expanded Python syntax recognition, additional IDE integration features, and comprehensive automated testing.
+Version 2.0 establishes compile-time Python resource evaluation as a core part of the navigation engine. Resource Navigator can now reconstruct deterministic resource values from multiple Python expression forms while preserving normal PyCharm symbol-navigation behavior.
+
+Development is currently focused on richer previews, additional deterministic Python syntax support, expanded IDE integration, and comprehensive automated testing.
 
 The plugin is implemented using standard IntelliJ Platform extension points and public PyCharm PSI APIs to maximize compatibility with future IDE releases.

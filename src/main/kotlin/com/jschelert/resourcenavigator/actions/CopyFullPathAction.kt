@@ -17,6 +17,9 @@ import java.awt.datatransfer.StringSelection
  * Copies the fully resolved filesystem path or URL of the currently selected
  * Resource Navigator target to the system clipboard.
  *
+ * This action never performs path resolution itself.
+ * All resource resolution is delegated to ResourceActionSupport.
+ *
  * Behavior
  * --------
  * • Local resources copy the resolved absolute filesystem path.
@@ -47,7 +50,7 @@ class CopyFullPathAction : AnAction(), DumbAware {
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible =
             ResourceActionSupport.target(e)?.let {
-                it.resolvedPath != null || it.rawValue.startsWith("http")
+                it.resolvedPath != null || it.sourceValue.startsWith("http")
             } == true
     }
 
@@ -59,7 +62,7 @@ class CopyFullPathAction : AnAction(), DumbAware {
             .getInstance()
             .setContents(
                 StringSelection(
-                    target.resolvedPath ?: target.rawValue
+                    target.resolvedPath ?: target.sourceValue
                 )
             )
     }

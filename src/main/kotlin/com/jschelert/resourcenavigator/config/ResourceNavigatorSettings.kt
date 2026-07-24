@@ -63,7 +63,7 @@ class ResourceNavigatorSettings :
 
         var resolveAgainstProjectRoot: Boolean = true,
 
-        var acceptAnyExistingPath: Boolean = false,
+        var acceptAnyPathLikeValue: Boolean = false,
 
         var enableUrlNavigation: Boolean = true,
 
@@ -94,6 +94,11 @@ class ResourceNavigatorSettings :
             .toSet()
 
     companion object {
+
+        /**
+         * Enable Resource Navigator development diagnostics.
+         */
+        const val DIAGNOSTICS_ENABLED: Boolean = false
 
         /**
          * Return the application-wide Resource Navigator settings instance.

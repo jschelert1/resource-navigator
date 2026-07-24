@@ -90,53 +90,114 @@ object ResourceCitationParser {
     /**
      * Parse every balanced bracketed resource citation contained within a
      * Python string literal.
+     *
+     * Examples
+     * --------
+     *
+     *     "See [paper.pdf] and [figure.svg]."
+     *
+     * produces:
+     *
+     *     paper.pdf
+     *     figure.svg
+     *
+     * Nested brackets within a resource name are preserved:
+     *
+     *     "See [Some Paper [1996].pdf]."
+     *
+     * produces:
+     *
+     *     Some Paper [1996].pdf
+     *
+     * Only balanced outer bracket pairs produce citations. Empty citations are
+     * ignored, and each returned TextRange identifies the citation text without
+     * the surrounding brackets.
      */
     fun parse(
         literal: PyStringLiteralExpression,
     ): List<ResourceCitation> {
 
+        //
+        // Obtain the decoded content of the Python string literal.
+        //
         val content =
             PythonStringUtil.contentText(literal)
 
+        //
+        // Skip literals containing no parseable content.
+        //
         if (content.isEmpty())
             return emptyList()
 
+        //
+        // Determine the PSI offset at which the literal content begins.
+        //
         val contentStart =
             PythonStringUtil.contentStartOffset(literal)
 
+        //
+        // Collect each balanced outer resource citation.
+        //
         val results =
             mutableListOf<ResourceCitation>()
 
+        //
+        // Track bracket nesting depth and the current outer citation start.
+        //
         var depth = 0
         var start = -1
 
+        //
+        // Scan the literal content for balanced bracket pairs.
+        //
         content.forEachIndexed { index, ch ->
 
             when (ch) {
 
                 '[' -> {
 
+                    //
+                    // Record the start of a new outer citation.
+                    //
                     if (depth == 0)
                         start = index
 
+                    //
+                    // Enter the current bracket level.
+                    //
                     depth++
                 }
 
                 ']' -> {
 
+                    //
+                    // Ignore unmatched closing brackets.
+                    //
                     if (depth == 0)
                         return@forEachIndexed
 
+                    //
+                    // Leave the current bracket level.
+                    //
                     depth--
 
+                    //
+                    // Complete the citation when its outer bracket closes.
+                    //
                     if (depth == 0 && start >= 0) {
 
+                        //
+                        // Extract and normalize the citation text.
+                        //
                         val resource =
                             content.substring(
                                 start + 1,
                                 index,
                             ).trim()
 
+                        //
+                        // Record non-empty citations and their PSI text range.
+                        //
                         if (resource.isNotEmpty()) {
 
                             results += ResourceCitation(
@@ -150,12 +211,18 @@ object ResourceCitationParser {
                             )
                         }
 
+                        //
+                        // Reset the start marker for the next outer citation.
+                        //
                         start = -1
                     }
                 }
             }
         }
 
+        //
+        // Return all balanced resource citations discovered in the literal.
+        //
         return results
     }
 

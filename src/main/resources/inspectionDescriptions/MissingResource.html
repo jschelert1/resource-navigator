@@ -10,20 +10,36 @@
 Reports local resource references that cannot be resolved.
 
 <p>
-    This inspection detects missing files referenced from supported Python string
-    literals. Resource Navigator recognizes configured resource fields,
-    <code>pathlib.Path(...)</code> constructors, supported resource extensions, and
-    other configured resource contexts.
+    This inspection detects missing local resources referenced by supported
+    Python string expressions. Resource Navigator evaluates supported
+    compile-time string constructs, including ordinary string literals,
+    adjacent string literals, constant f-string interpolation, constant
+    references, string concatenation, and supported
+    <code>pathlib</code> constructors.
 </p>
 
 <p>
-    Both project-relative and absolute filesystem paths are checked.
-    HTTP and HTTPS URLs are intentionally ignored.
+    Supported <code>pathlib</code> constructors include
+    <code>Path(...)</code>, <code>PurePath(...)</code>,
+    <code>PureWindowsPath(...)</code>, and
+    <code>PurePosixPath(...)</code>.
 </p>
 
 <p>
-    Resolution behavior and recognized resource extensions can be configured under
-    <b>Settings | Tools | Resource Navigator</b>.
+    Absolute filesystem paths are resolved directly. Relative paths can be
+    resolved against the current source-file directory and/or the project root,
+    depending on the Resource Navigator settings.
+</p>
+
+<p>
+    Filesystem glob patterns and unresolved or unsupported dynamic expressions
+    are not reported as missing resources. HTTP and HTTPS URLs are also
+    intentionally excluded from missing-resource inspection.
+</p>
+
+<p>
+    Resolution behavior and recognized resource extensions can be configured
+    under <b>Settings | Tools | Resource Navigator</b>.
 </p>
 
 </body>

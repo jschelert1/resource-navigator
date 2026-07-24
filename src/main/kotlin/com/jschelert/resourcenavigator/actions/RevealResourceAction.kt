@@ -44,9 +44,16 @@ import java.io.File
  */
 class RevealResourceAction : AnAction(), DumbAware {
 
+    /**
+     * Perform action updates on IntelliJ's background thread.
+     */
     override fun getActionUpdateThread(): ActionUpdateThread =
         ActionUpdateThread.BGT
 
+    /**
+     * Enable this action when the current resource can be revealed
+     * in the operating system's native file manager.
+     */
     override fun update(
         e: AnActionEvent,
     ) {
@@ -61,6 +68,10 @@ class RevealResourceAction : AnAction(), DumbAware {
             } == true
     }
 
+    /**
+     * Reveal the currently selected local resource in the operating
+     * system's native file manager.
+     */
     override fun actionPerformed(
         e: AnActionEvent,
     ) {

@@ -43,9 +43,15 @@ import com.jschelert.resourcenavigator.util.ResourceKind
  */
 class OpenResourceAction : AnAction(), DumbAware {
 
+    /**
+     * Perform action updates on IntelliJ's background thread.
+     */
     override fun getActionUpdateThread(): ActionUpdateThread =
         ActionUpdateThread.BGT
 
+    /**
+     * Enable this action when the current resource can be opened.
+     */
     override fun update(e: AnActionEvent) {
 
         val target =
@@ -57,10 +63,14 @@ class OpenResourceAction : AnAction(), DumbAware {
             } == true
     }
 
+    /**
+     * Open the currently selected resource.
+     */
     override fun actionPerformed(e: AnActionEvent) {
 
-        val target = ResourceActionSupport.target(e)
-            ?: return
+        val target =
+            ResourceActionSupport.target(e)
+                ?: return
 
         ResourceDispatcher.open(e.project, target)
     }

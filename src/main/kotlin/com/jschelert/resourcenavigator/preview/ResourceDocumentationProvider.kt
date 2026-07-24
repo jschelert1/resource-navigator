@@ -5,6 +5,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.jetbrains.python.psi.PyStringLiteralExpression
+import com.jschelert.resourcenavigator.util.PythonStringResolver
 import com.jschelert.resourcenavigator.util.ResourceKind
 import com.jschelert.resourcenavigator.util.ResourceResolver
 import java.nio.file.Files
@@ -22,46 +23,107 @@ import java.nio.file.Paths
  *
  * Behavior
  * --------
- * • Displays metadata for local resources.
+ * • Locates the Python string literal associated with the documentation request.
+ * • Resolves Python strings through PythonStringResolver.
+ * • Resolves reconstructed string values through ResourceResolver.
  * • Displays URL information for HTTP/HTTPS resources.
- * • Indicates whether local resources exist.
- * • Displays detected file type and file size.
- * • Escapes HTML content before rendering documentation.
+ * • Displays existence status, detected file type, file size, and resolved path
+ *   for local filesystem resources.
+ * • Escapes dynamic HTML content before rendering documentation.
  *
  * Responsibilities
  * ----------------
- * • Generate Quick Documentation HTML.
  * • Locate the enclosing Python string literal.
- * • Resolve resources using ResourceResolver.
- * • Present concise resource metadata to the user.
+ * • Evaluate the Python literal into its reconstructed compile-time value.
+ * • Resolve the reconstructed value into a ResourceTarget.
+ * • Generate concise Quick Documentation HTML for the resolved resource.
+ * • Present local-resource metadata without performing navigation.
  *
  * Dependencies
  * ------------
+ * • PythonStringResolver
  * • ResourceResolver
  * • ResourceKind
  * • PyStringLiteralExpression
  * • AbstractDocumentationProvider
  * • StringUtil
+ * • java.nio.file.Files
+ * • java.nio.file.Paths
  *
- * See Also
- * --------
- * • ResourceReferenceContributor
- * • ResourceGotoDeclarationHandler
- * • ResourceDispatcher
- * • ResourceReferenceLocal
- * • ResourceReferenceUrl
+ * Resolution Flow
+ * ---------------
+ *
+ *     PsiElement
+ *         |
+ *         v
+ *     PyStringLiteralExpression
+ *         |
+ *         v
+ *     PythonStringResolver
+ *         |
+ *         v
+ *     PythonResolvedString
+ *         |
+ *         v
+ *     ResourceResolver
+ *         |
+ *         v
+ *     ResourceTarget
+ *         |
+ *         +----> URL metadata
+ *         |
+ *         +----> Local filesystem metadata
+ *         |
+ *         v
+ *     Quick Documentation HTML
+ *
+ * PythonStringResolver determines the reconstructed compile-time value of the
+ * Python literal. ResourceResolver then interprets that value as a supported
+ * Resource Navigator resource. The resulting ResourceTarget supplies the
+ * metadata used to construct the Quick Documentation display.
  *
  * Architectural Notes
  * -------------------
  * • Documentation generation is intentionally read-only and never performs
  *   navigation.
  *
- * • Resource resolution is delegated entirely to ResourceResolver so that the
- *   documentation provider shares the same resolution rules as every other
- *   navigation subsystem.
+ * • Python string evaluation and resource resolution are intentionally
+ *   separated. PythonStringResolver determines what the Python expression
+ *   means, while ResourceResolver determines what resource that value
+ *   represents.
+ *
+ * • Resource resolution uses the same PythonStringResolver → ResourceResolver
+ *   pipeline used by the navigation subsystem, keeping documentation behavior
+ *   consistent with resource navigation.
+ *
+ * • Local file size is queried only when the resolved resource exists and can
+ *   be represented as a java.nio.file.Path.
  *
  * • HTML escaping is centralized within this class to ensure arbitrary file
- *   names and URLs are displayed safely inside IntelliJ's documentation pane.
+ *   names, paths, file types, and URLs are rendered safely inside IntelliJ's
+ *   documentation pane.
+ *
+ * See Also
+ * --------
+ * • PythonStringResolver
+ * • ResourceResolver
+ * • ResourceReferenceContributor
+ * • ResourceGotoDeclarationHandler
+ * • ResourceDispatcher
+ * • ResourceReferenceLocal
+ * • ResourceReferenceUrl
+ *
+ * Revision History
+ * ----------------
+ * v2.0.0 — 2026-07-23 (JS)
+ * • Updated Quick Documentation resource handling to evaluate Python string
+ *   literals through PythonStringResolver before resource resolution.
+ * • Separated Python string evaluation from ResourceResolver resource
+ *   resolution.
+ * • Updated documentation generation to operate on the reconstructed
+ *   compile-time string value.
+ * • Documented the shared PythonStringResolver → ResourceResolver resolution
+ *   pipeline used by Quick Documentation and resource navigation.
  */
 class ResourceDocumentationProvider : AbstractDocumentationProvider() {
 
@@ -73,24 +135,63 @@ class ResourceDocumentationProvider : AbstractDocumentationProvider() {
      * • Displays URL information for HTTP/HTTPS resources.
      * • Displays status, type, size, and path for local resources.
      * • Returns null when the current element is not a supported resource.
+     *
+     * Documentation Behavior
+     * ----------------------
+     *
+     * +--------------------------------------+-----------------------+----------------------------------+
+     * | Python String Example                | Resource State        | Quick Documentation             |
+     * +--------------------------------------+-----------------------+----------------------------------+
+     * | 'docs/manual.pdf'                    | Existing local file   | Status, type, size, and path     |
+     * | 'docs/missing.pdf'                   | Missing local file    | Missing status, type, and path   |
+     * | 'C:\Documents\report.pdf'            | Existing local file   | Status, type, size, and path     |
+     * | 'https://example.com'                | HTTP/HTTPS URL        | URL and browser-open information |
+     * | '*.pdf'                              | Unsupported/glob      | None                             |
+     * | 'ordinary text'                      | Not a resource        | None                             |
+     * | f'{runtime_value}'                   | Unresolved expression | None                             |
+     * +--------------------------------------+-----------------------+----------------------------------+
+     *
+     * Local file size is displayed only when the resource exists and its
+     * resolved path can be queried successfully.
      */
     override fun generateDoc(
         element: PsiElement,
         originalElement: PsiElement?,
     ): String? {
 
+        //
+        // Locate the enclosing Python string literal PSI element.
+        //
         val literal =
             findLiteral(
                 originalElement ?: element,
             ) ?: return null
 
-        val target =
-            ResourceResolver.resolve(literal)
+        //
+        // Resolve the Python literal into its reconstructed compile-time value.
+        //
+        val resolved =
+            PythonStringResolver.resolve(literal)
                 ?: return null
 
-        val escapedRaw =
-            html(target.rawValue)
+        //
+        // Resolve the reconstructed string value as a resource.
+        //
+        val target =
+            ResourceResolver.resolve(
+                literal,
+                resolved,
+            ) ?: return null
 
+        //
+        // Escape the original resource value for safe HTML rendering.
+        //
+        val escapedRaw =
+            html(target.sourceValue)
+
+        //
+        // Generate Quick Documentation for URL resources.
+        //
         if (target.kind == ResourceKind.URL) {
             return """
                 <b>Resource URL</b><br>
@@ -99,18 +200,30 @@ class ResourceDocumentationProvider : AbstractDocumentationProvider() {
             """.trimIndent()
         }
 
+        //
+        // Determine the resolved local filesystem path.
+        //
         val path =
             target.resolvedPath
-                ?: target.rawValue
+                ?: target.sourceValue
 
+        //
+        // Convert the resolved path into a filesystem Path when possible.
+        //
         val file =
             runCatching {
                 Paths.get(path)
             }.getOrNull()
 
+        //
+        // Determine whether the local resource exists.
+        //
         val exists =
             target.exists
 
+        //
+        // Determine the local resource size when available.
+        //
         val size =
             if (exists && file != null) {
                 runCatching {
@@ -120,12 +233,18 @@ class ResourceDocumentationProvider : AbstractDocumentationProvider() {
                 null
             }
 
+        //
+        // Determine the IntelliJ file-type description.
+        //
         val type =
             target.virtualFile
                 ?.fileType
                 ?.description
                 ?: "File"
 
+        //
+        // Construct the human-readable resource status.
+        //
         val status =
             if (exists) {
                 "Exists"
@@ -133,11 +252,17 @@ class ResourceDocumentationProvider : AbstractDocumentationProvider() {
                 "Missing"
             }
 
+        //
+        // Construct the optional formatted file-size metadata.
+        //
         val sizeText =
             size?.let {
                 "<br><b>Size:</b> ${StringUtil.formatFileSize(it)}"
             } ?: ""
 
+        //
+        // Generate Quick Documentation for the local resource.
+        //
         return """
             <b>Resource</b><br>
             <b>Status:</b> $status<br>

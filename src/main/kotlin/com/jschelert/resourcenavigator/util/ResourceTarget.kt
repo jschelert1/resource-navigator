@@ -15,7 +15,9 @@ import com.intellij.openapi.vfs.VirtualFile
  * Behavior
  * --------
  * • Represents either a local filesystem resource or an HTTP/HTTPS URL.
- * • Carries the original resource string together with its resolved metadata.
+ * • Carries both the original resource expression and its compile-time
+ *   resolved value.
+ * • Stores resolved filesystem metadata for local resources.
  * • Stores VirtualFile information for local resources when available.
  * • Indicates whether a local resource currently exists.
  *
@@ -64,11 +66,19 @@ enum class ResourceKind {
     URL,
 }
 
+
 /**
  * Immutable description of a resolved resource.
  *
- * @property rawValue
- * Original resource string extracted from the Python source.
+ * @property sourceValue
+ * Source-oriented resource string associated with the originating Python
+ * expression.
+ *
+ * @property resolvedValue
+ * Compile-time resolved resource value produced by
+ * PythonStringResolver. This may differ from sourceValue when the
+ * original expression contains constant references, f-string
+ * interpolation, or other compile-time constructs.
  *
  * @property kind
  * Category of resolved resource.
@@ -85,7 +95,9 @@ enum class ResourceKind {
  */
 data class ResourceTarget(
 
-    val rawValue: String,
+    val sourceValue: String,
+
+    val resolvedValue: String,
 
     val kind: ResourceKind,
 
