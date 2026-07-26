@@ -6,6 +6,12 @@ The plugin integrates with **Go to Declaration (Ctrl+Click)**, **Quick Documenta
 
 ---
 
+# Version 2.0.1
+
+Version 2.0.1 updates the Resource Navigator development platform to PyCharm 2026.2 and JDK 25 while retaining compatibility with PyCharm 2025.2 and later.
+
+The release updates the IntelliJ Platform Gradle Plugin to 2.18.1, removes the upper IDE compatibility bound, and adds explicit Plugin Verifier coverage for PyCharm 2025.2.6.1 and PyCharm 2026.2.
+
 # Version 2.0.0 Milestone
 
 Version 2.0 introduces compile-time Python resource evaluation, substantially expanding Resource Navigator beyond direct string-literal navigation.
@@ -159,20 +165,21 @@ This keeps IDE navigation explicit rather than treating PyCharm as the fallback 
 
 # Development Environment
 
-This project currently targets:
+This project currently uses:
 
-* PyCharm 2025.2.6.1 (Build 252)
-* JDK 21
+* PyCharm 2026.2 (Build 262) as the development and build target
+* PyCharm 2025.2 (Build 252) and later as the supported compatibility range
+* JDK 25
 * Kotlin 2.3.20
-* IntelliJ Platform Gradle Plugin 2.13.1
-* Gradle 9.4.1 (or compatible)
+* IntelliJ Platform Gradle Plugin 2.18.1
+* Gradle 9.6.1 (or compatible)
 
 ---
 
 # Build and Run
 
 1. Open this directory as a Gradle project in IntelliJ IDEA or PyCharm Professional.
-2. Select a JDK 21 Gradle JVM.
+2. Select a JDK 25 Gradle JVM.
 3. Allow Gradle to download the PyCharm SDK and PythonCore dependency.
 4. Run the Gradle task:
 
@@ -193,6 +200,23 @@ The resulting plugin is written to:
 
 ```text
 build/distributions/
+```
+
+---
+
+## Plugin Verification
+
+Resource Navigator uses the IntelliJ Plugin Verifier to check compatibility with supported PyCharm versions.
+
+The current release is verified against:
+
+* PyCharm 2025.2.6.1 (Build 252)
+* PyCharm 2026.2 (Build 262)
+
+Run the Gradle task:
+
+```text
+verifyPlugin
 ```
 
 ---
@@ -323,4 +347,4 @@ Version 2.0 establishes compile-time Python resource evaluation as a core part o
 
 Development is currently focused on richer previews, additional deterministic Python syntax support, expanded IDE integration, and comprehensive automated testing.
 
-The plugin is implemented using standard IntelliJ Platform extension points and public PyCharm PSI APIs to maximize compatibility with future IDE releases.
+The plugin is implemented using standard IntelliJ Platform extension points and PyCharm PSI APIs, with compatibility monitored through IntelliJ Plugin Verifier testing against supported IDE versions.

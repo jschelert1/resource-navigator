@@ -744,6 +744,46 @@ It should not duplicate resource classification, compile-time evaluation, or ext
 
 ---
 
+# Development Environment and Compatibility
+
+Resource Navigator 2.0.1 is developed and built against:
+
+* PyCharm 2026.2 (Build 262)
+* JDK 25
+* Kotlin 2.3.20
+* IntelliJ Platform Gradle Plugin 2.18.1
+* Gradle 9.6.1 (or compatible)
+
+The minimum supported IDE platform is PyCharm 2025.2 (Build 252). No upper IDE compatibility bound is declared.
+
+Compatibility is checked with IntelliJ Plugin Verifier against:
+
+* PyCharm 2025.2.6.1 (Build 252)
+* PyCharm 2026.2 (Build 262)
+
+Run:
+
+```text
+verifyPlugin
+```
+
+---
+
+## Experimental API Usage
+
+IntelliJ Plugin Verifier currently reports five usages of experimental PyCharm Python APIs across four API methods:
+
+* `PyAstBinaryExpression.getOperator()`
+* `PyAstStringLiteralExpression.getStringValue()`
+* `PyAstStringElement.getDecodedFragments()`
+* `PyAstFormattedStringElement.getDecodedFragments()`
+
+These APIs are currently compatible with both PyCharm 2025.2.6.1 and PyCharm 2026.2 but should be treated as potential compatibility points when upgrading to future PyCharm releases.
+
+Future IDE migrations should run `verifyPlugin` before release and review any changes to these APIs before modifying the Python evaluation subsystem.
+
+---
+
 # Development Diagnostics
 
 Development-time diagnostic output is controlled globally through:
