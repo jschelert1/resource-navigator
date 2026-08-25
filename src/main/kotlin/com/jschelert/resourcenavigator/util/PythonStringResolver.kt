@@ -4,6 +4,7 @@ import com.jetbrains.python.psi.PyBinaryExpression
 import com.jetbrains.python.psi.PyCallExpression
 import com.jetbrains.python.psi.PyExpression
 import com.jetbrains.python.psi.PyFormattedStringElement
+import com.jetbrains.python.psi.PyKeywordArgument
 import com.jetbrains.python.psi.PyReferenceExpression
 import com.jetbrains.python.psi.PyStringLiteralExpression
 import com.jetbrains.python.psi.PyStringElement
@@ -11,6 +12,7 @@ import com.jetbrains.python.psi.PyTargetExpression
 import com.jetbrains.python.PyTokenTypes
 import com.jetbrains.python.psi.PyParenthesizedExpression
 import com.jschelert.resourcenavigator.config.ResourceNavigatorSettings
+import com.intellij.psi.util.PsiTreeUtil
 
 import java.nio.file.Paths
 
@@ -67,6 +69,7 @@ import kotlin.collections.mutableSetOf
  * • Evaluate supported Python expressions into compile-time string values.
  * • Reconstruct constant f-string interpolation recursively.
  * • Resolve references to compile-time constant assignments.
+ * • Resolve previous keyword arguments within the same call expression.
  * • Evaluate supported binary string and path expressions.
  * • Evaluate supported pathlib constructor expressions.
  * • Detect circular constant references.
@@ -192,6 +195,12 @@ import kotlin.collections.mutableSetOf
  *   representations throughout the resource-resolution pipeline.
  * • Established a fail-closed evaluator that never executes Python code.
  * • Added transparent evaluation of parenthesized compile-time expressions.
+ *
+ * v2.1.0 — 2026-08-25 (JS)
+ * • Added Issue #5 resolution of previously declared keyword arguments within
+ *   the same call expression.
+ * • Preserved normal Python reference resolution as the primary lookup path.
+ * • Rejected forward and outside-call keyword references.
  */
 object PythonStringResolver {
 
@@ -694,7 +703,17 @@ object PythonStringResolver {
         //
         val target =
             reference.reference.resolve() as? PyTargetExpression
-                ?: return null
+
+        //
+        // If normal Python resolution fails, try Resource Navigator's
+        // deterministic previous-keyword convention for the same call.
+        //
+        if (target == null) {
+            return evaluatePreviousKeywordReference(
+                reference = reference,
+                resolving = resolving,
+            )
+        }
 
         //
         // Register the target and reject circular reference chains.
@@ -737,6 +756,73 @@ object PythonStringResolver {
             //
             resolving.remove(target)
         }
+    }
+
+    /**
+     * Resolve an otherwise unresolved reference against a previously declared
+     * keyword argument in the same call expression.
+     *
+     * Issue #5 — Previous Keyword Argument Resolution
+     * -----------------------------------------------
+     *
+     *     SomeClass(
+     *         base_path=Path("docs"),
+     *         file_path=base_path / "manual.pdf",
+     *     )
+     *
+     * Only earlier keyword arguments in the same call may bind. Forward and
+     * outside-call references fail closed.
+     */
+    private fun evaluatePreviousKeywordReference(
+        reference: PyReferenceExpression,
+        resolving: MutableSet<PyTargetExpression>,
+    ): String? {
+
+        val referenceName =
+            reference.text
+                .takeIf { it.isNotBlank() }
+                ?: return null
+
+        val currentKeyword =
+            PsiTreeUtil.getParentOfType(
+                reference,
+                PyKeywordArgument::class.java,
+                false,
+            )
+                ?: return null
+
+        val call =
+            PsiTreeUtil.getParentOfType(
+                currentKeyword,
+                PyCallExpression::class.java,
+                true,
+            )
+                ?: return null
+
+        val currentOffset =
+            currentKeyword.textRange.startOffset
+
+        val previousKeyword =
+            call.arguments
+                .filterIsInstance<PyKeywordArgument>()
+                .asSequence()
+                .filter { it.textRange.startOffset < currentOffset }
+                .filter {
+                    it.text
+                        .substringBefore('=')
+                        .trim() == referenceName
+                }
+                .lastOrNull()
+                ?: return null
+
+        val assignedValue =
+            previousKeyword.valueExpression
+                ?: return null
+
+        return resolve(
+            assignedValue,
+            resolving,
+        )
     }
 
     /**

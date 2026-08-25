@@ -11,6 +11,7 @@ import com.jschelert.resourcenavigator.util.PythonStringResolver
 import com.jschelert.resourcenavigator.util.ResourceKind
 import com.jschelert.resourcenavigator.util.ResourceResolver
 import com.jschelert.resourcenavigator.util.ResourceClassifier
+import com.jschelert.resourcenavigator.util.ResourceQuotedParser
 
 /**
  * =================================================================================================
@@ -24,6 +25,7 @@ import com.jschelert.resourcenavigator.util.ResourceClassifier
  * Behavior
  * --------
  * • Visits Python string literals.
+ * • Gives embedded quoted resources precedence over whole-string inspection.
  * • Resolves each recognized resource using ResourceResolver.
  * • Reports missing local filesystem resources.
  * • URL resources and existing files are ignored.
@@ -32,6 +34,7 @@ import com.jschelert.resourcenavigator.util.ResourceClassifier
  * Responsibilities
  * ----------------
  * • Traverse Python string literals.
+ * • Parse embedded quoted resources through ResourceQuotedParser.
  * • Resolve candidate resources.
  * • Report unresolved local filesystem resources.
  *
@@ -39,6 +42,7 @@ import com.jschelert.resourcenavigator.util.ResourceClassifier
  * ------------
  * • ResourceNavigatorSettings
  * • ResourceResolver
+ * • ResourceQuotedParser
  * • ResourceKind
  * • IntelliJ LocalInspectionTool
  *
@@ -89,6 +93,24 @@ class MissingResourceInspection : LocalInspectionTool() {
             override fun visitPyStringLiteralExpression(
                 node: PyStringLiteralExpression,
             ) {
+
+                //
+                // Give explicitly quoted resources precedence over whole-string
+                // inspection so surrounding descriptive prose is never treated as
+                // part of the filesystem path.
+                //
+                val quotedResources =
+                    ResourceQuotedParser.parse(node)
+
+                if (quotedResources.isNotEmpty()) {
+                    inspectQuotedResources(
+                        holder = holder,
+                        node = node,
+                        resources = quotedResources,
+                    )
+
+                    return
+                }
 
                 //
                 // Determine the complete supported expression represented by this literal.
@@ -146,4 +168,56 @@ class MissingResourceInspection : LocalInspectionTool() {
             }
         }
     }
+    /**
+     * Inspect explicitly quoted resources embedded in descriptive Python text.
+     *
+     * Existing local resources and URLs are ignored. Missing local resources are
+     * reported against each physical quoted-resource fragment rather than against
+     * the complete descriptive Python string.
+     */
+    private fun inspectQuotedResources(
+        holder: ProblemsHolder,
+        node: PyStringLiteralExpression,
+        resources: List<ResourceQuotedParser.QuotedResource>,
+    ) {
+
+        resources.forEach { resource ->
+
+            val value =
+                resource.text.trim()
+
+            if (
+                value.isEmpty() ||
+                ResourceClassifier.isUrl(value) ||
+                !ResourceClassifier.shouldHandle(
+                    node,
+                    value,
+                )
+            ) {
+                return@forEach
+            }
+
+            val target =
+                ResourceResolver.resolveLocal(
+                    project = node.project,
+                    containingFile = node.containingFile,
+                    sourceValue = value,
+                )
+
+            if (target.exists) {
+                return@forEach
+            }
+
+            resource.ranges.forEach { range ->
+                holder.registerProblem(
+                    node,
+                    range,
+                    "Referenced resource does not exist: ${
+                        target.resolvedPath ?: target.sourceValue
+                    }",
+                )
+            }
+        }
+    }
+
 }

@@ -10,6 +10,7 @@ Resource Navigator release.
 - Finish all code changes.
 - Verify the plugin compiles without errors.
 - Update regression tests.
+- Run the complete automated test suite (`./gradlew test`) and verify all tests pass.
 - Perform a quick manual validation in the development IDE.
 
 ---
@@ -245,6 +246,8 @@ Verify:
 ```
 Complete development
         ↓
+Run automated test suite
+        ↓
 Increment version
         ↓
 Update README/documentation
@@ -269,6 +272,7 @@ Smoke test
 # Release Checklist
 
 - [ ] Development complete
+- [ ] Automated test suite passed (`./gradlew test`)
 - [ ] Version incremented
 - [ ] Documentation updated
 - [ ] Plugin builds successfully

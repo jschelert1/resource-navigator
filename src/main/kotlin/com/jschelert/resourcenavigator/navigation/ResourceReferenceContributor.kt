@@ -16,6 +16,7 @@ import com.jschelert.resourcenavigator.util.PythonStringResolver
 import com.jschelert.resourcenavigator.util.PythonStringUtil
 import com.jschelert.resourcenavigator.util.ResourceClassifier
 import com.jschelert.resourcenavigator.util.ResourceResolver
+import com.jschelert.resourcenavigator.util.ResourceQuotedParser
 import com.jschelert.resourcenavigator.util.PythonResourceContext
 
 /**
@@ -32,6 +33,7 @@ import com.jschelert.resourcenavigator.util.PythonResourceContext
  * --------
  * • Registers a PSI reference provider for Python string literals.
  * • Gives precedence to bracketed resource citations.
+ * • Recognizes explicitly quoted resources embedded in descriptive text.
  * • Preserves ordinary one-resource-per-string navigation.
  * • Resolves ordinary Python strings through PythonStringResolver.
  * • Filters candidate resources using ResourceClassifier.
@@ -41,7 +43,7 @@ import com.jschelert.resourcenavigator.util.PythonResourceContext
  * Responsibilities
  * ----------------
  * • Register IntelliJ PSI reference providers.
- * • Dispatch between citation and ordinary resource handling.
+ * • Dispatch between citation, embedded quoted-resource, and ordinary resource handling.
  * • Evaluate ordinary Python string literals into resolved string values.
  * • Coordinate resource classification and resolution.
  * • Construct PSI references for recognized resources.
@@ -51,6 +53,7 @@ import com.jschelert.resourcenavigator.util.PythonResourceContext
  * • PythonStringResolver
  * • PythonStringUtil
  * • ResourceCitationParser
+ * • ResourceQuotedParser
  * • ResourceClassifier
  * • ResourceResolver
  * • ResourceReferenceLocal
@@ -104,9 +107,13 @@ import com.jschelert.resourcenavigator.util.PythonResourceContext
  *
  * Architectural Notes
  * -------------------
- * • Bracketed citations intentionally take precedence over ordinary resource
- *   strings, allowing multiple independently navigable resources to exist
- *   within a single Python string literal.
+ * • Bracketed citations intentionally take precedence over embedded quoted
+ *   resources and ordinary resource strings, allowing multiple independently
+ *   navigable resources to exist within a single Python string literal.
+ *
+ * • Embedded quoted resources are recognized only when a complete quoted token
+ *   inside the Python string independently classifies and resolves as a resource.
+ *   Unquoted resources embedded in prose remain intentionally unsupported.
  *
  * • Ordinary Python strings are evaluated through PythonStringResolver before
  *   classification and resource resolution. Navigation therefore operates on
@@ -129,6 +136,7 @@ import com.jschelert.resourcenavigator.util.PythonResourceContext
  * • PythonStringResolver
  * • PythonStringUtil
  * • ResourceCitationParser
+ * • ResourceQuotedParser
  * • ResourceClassifier
  * • ResourceResolver
  * • ResourceReferenceLocal
@@ -147,6 +155,10 @@ import com.jschelert.resourcenavigator.util.PythonResourceContext
  * • Documented the separate semantic-resolution and PSI-range data flows.
  * • Prepared PSI reference generation for expanded constant-string evaluation
  *   and Tier 3/4 resource navigation.
+ * • Added embedded quoted-resource extraction for descriptive Python strings,
+ *   preserving independent PSI ranges and direct local-resource resolution.
+ * • Extended quoted-resource extraction across adjacent Python string elements
+ *   through the shared ResourceQuotedParser semantic-to-PSI range mapper.
  */
 
 class ResourceReferenceContributor : PsiReferenceContributor() {
@@ -226,6 +238,22 @@ class ResourceReferenceContributor : PsiReferenceContributor() {
                     }
 
                     //
+                    // Parse explicitly quoted resources embedded in descriptive text.
+                    //
+                    val quotedResources =
+                        ResourceQuotedParser.parse(literal)
+
+                    //
+                    // Create independent references for embedded quoted resources.
+                    //
+                    if (quotedResources.isNotEmpty()) {
+                        return createQuotedResourceReferences(
+                            literal = literal,
+                            resources = quotedResources,
+                        )
+                    }
+
+                    //
                     // Fall back to ordinary one-resource-per-string handling.
                     //
                     return createOrdinaryReferences(literal)
@@ -233,6 +261,75 @@ class ResourceReferenceContributor : PsiReferenceContributor() {
             },
             PsiReferenceRegistrar.HIGHER_PRIORITY,
         )
+    }
+
+    /**
+     * Create independent PSI references for explicitly quoted resources embedded
+     * in descriptive Python text.
+     *
+     * A resource spanning adjacent Python literals produces one reference per
+     * physical source fragment. Every fragment resolves using the same complete
+     * resource value.
+     */
+    private fun createQuotedResourceReferences(
+        literal: PyStringLiteralExpression,
+        resources: List<ResourceQuotedParser.QuotedResource>,
+    ): Array<PsiReference> {
+
+        val references =
+            mutableListOf<PsiReference>()
+
+        resources.forEach { resource ->
+
+            val value =
+                resource.text.trim()
+
+            if (value.isEmpty()) {
+                return@forEach
+            }
+
+            //
+            // Reject quoted text that is not independently resource-shaped.
+            //
+            if (
+                !ResourceClassifier.shouldHandle(
+                    literal,
+                    value,
+                )
+            ) {
+                return@forEach
+            }
+
+            //
+            // Resolve the complete extracted local value directly rather than
+            // re-evaluating the surrounding descriptive Python expression.
+            //
+            val target =
+                ResourceResolver.resolveLocal(
+                    project = literal.project,
+                    containingFile = literal.containingFile,
+                    sourceValue = value,
+                )
+
+            if (!target.exists) {
+                return@forEach
+            }
+
+            //
+            // Give every physical fragment of an adjacent-string resource its
+            // own clickable range while preserving the complete resolution value.
+            //
+            resource.ranges.forEach { range ->
+                references +=
+                    ResourceReferenceLocal(
+                        element = literal,
+                        range = range,
+                        rawValue = value,
+                    )
+            }
+        }
+
+        return references.toTypedArray()
     }
 
     /**

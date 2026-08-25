@@ -38,9 +38,9 @@ Resource paths can now be reconstructed from adjacent literals, constant f-strin
 * Native file-manager navigation for directories.
 * Editor context actions:
 
-  * Open Resource
-  * Reveal in File Manager
-  * Copy Full Path
+    * Open Resource
+    * Reveal in File Manager
+    * Copy Full Path
 * Missing-resource inspection.
 * Quick Documentation metadata for resources.
 * Configurable resource field names.
@@ -49,6 +49,7 @@ Resource paths can now be reconstructed from adjacent literals, constant f-strin
 * Glob-pattern detection to prevent unsupported wildcard references from becoming navigation links.
 * Bracketed resource citations within Python string literals.
 * Expanded and reorganized regression tests for supported and unsupported resource references.
+* IntelliJ Platform automated regression testing for inspection, navigation, and missing-resource behavior.
 
 ---
 
@@ -221,6 +222,30 @@ verifyPlugin
 
 ---
 
+## Automated Testing
+
+Resource Navigator includes automated unit and IntelliJ Platform fixture tests for resource recognition, inspection, and navigation behavior.
+
+Run the complete automated test suite with:
+
+```text
+./gradlew test
+```
+
+Current automated coverage includes:
+
+* Resource classification and utility behavior.
+* GitHub Issues #1–#8 regression coverage for false-positive and fail-closed inspection behavior.
+* Positive missing-resource diagnostics.
+* Real-filesystem-backed PSI/reference navigation.
+* Static `pathlib.Path` composition.
+* Issue #5 previous-keyword resolution and forward/outside-call boundary behavior.
+* Quoted PDF, DOCX, and JPG resource navigation.
+
+Navigation integration tests use real temporary filesystem-backed Python sources and resource targets so the same filesystem-resolution semantics used by Resource Navigator in PyCharm are exercised by the test suite.
+
+---
+
 # Resource Recognition
 
 A resolved Python value is treated as a resource candidate when supported Resource Navigator classification rules identify it as a URL or filesystem resource.
@@ -334,8 +359,7 @@ Primary components include:
 
 ### Testing
 
-* IntelliJ Platform test fixture integration.
-* Expanded automated unit and integration test coverage.
+* Continued expansion of automated integration and navigation-policy coverage.
 
 ---
 
@@ -345,6 +369,6 @@ Resource Navigator is currently an actively developed project.
 
 Version 2.0 establishes compile-time Python resource evaluation as a core part of the navigation engine. Resource Navigator can now reconstruct deterministic resource values from multiple Python expression forms while preserving normal PyCharm symbol-navigation behavior.
 
-Development is currently focused on richer previews, additional deterministic Python syntax support, expanded IDE integration, and comprehensive automated testing.
+Development is currently focused on richer previews, additional deterministic Python syntax support, expanded IDE integration, and continued expansion of automated integration coverage.
 
 The plugin is implemented using standard IntelliJ Platform extension points and PyCharm PSI APIs, with compatibility monitored through IntelliJ Plugin Verifier testing against supported IDE versions.

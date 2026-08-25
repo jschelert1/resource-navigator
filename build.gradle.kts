@@ -1,4 +1,5 @@
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 // ============================================================================
 // Resource Navigator — Gradle Build Configuration
@@ -12,10 +13,10 @@ import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 //   Maximum: Unbounded
 //
 // Notes:
-//   IntelliJ Platform testFramework dependency is intentionally omitted.
-//   Current tests use kotlin.test only. The Platform test-framework dependency
-//   caused ModuleDescriptor.Dependency parsing failures with PyCharm 2026.2
-//   and is unnecessary until IntelliJ Platform fixture tests are introduced.
+//   IntelliJ Platform fixture testing is enabled through TestFrameworkType.Platform.
+//   Existing kotlin.test unit tests remain supported alongside Platform fixture tests.
+//   If PyCharm 2026.2 again exposes ModuleDescriptor.Dependency parsing failures,
+//   TestFrameworkType.Bundled is the documented fallback to testFramework.jar.
 //
 // RH:
 //   v2.0.1 — 2026-07-26
@@ -26,6 +27,10 @@ import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 //   - Removed upper IDE compatibility bound for forward compatibility.
 //   - Removed unused IntelliJ Platform testFramework dependency.
 //   - Verified buildPlugin and runtime resource navigation under PyCharm 2026.2.
+//
+//   v2.1.0 — 2026-08-25
+//   - Reintroduced IntelliJ Platform fixture-test support for automated RN regressions.
+//   - Added the Platform test framework while retaining kotlin.test unit tests.
 // ============================================================================
 
 plugins {
@@ -53,15 +58,17 @@ dependencies {
     intellijPlatform {
         pycharm("2026.2")
         bundledPlugin("PythonCore")
+        testFramework(TestFrameworkType.Platform)
     }
 
     testImplementation(kotlin("test"))
+    testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {
     pluginConfiguration {
         id = "com.jschelert.resource-navigator"
-        name = "Resource Navigator"
+        name.set("Resource Navigator")
         version = project.version.toString()
 
         ideaVersion {
@@ -70,7 +77,7 @@ intellijPlatform {
         }
 
         vendor {
-            name = "James Schelert"
+            name.set("James Schelert")
         }
     }
 

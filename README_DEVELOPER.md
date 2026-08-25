@@ -769,6 +769,157 @@ verifyPlugin
 
 ---
 
+# Automated Testing Architecture
+
+Resource Navigator uses both ordinary unit tests and IntelliJ Platform/PyCharm fixture tests. The automated suite exercises resource classification, inspection behavior, Python PSI reference contribution, compile-time path evaluation, and resolved navigation targets.
+
+Run the complete automated suite with:
+
+```text
+./gradlew test
+```
+
+The current regression suite includes coverage for:
+
+* resource classification behavior
+* GitHub Issues #1–#8 no-false-positive inspection cases
+* positive missing-resource diagnostics
+* standalone existing-resource navigation
+* static `pathlib.Path` composition
+* Issue #5 previous-keyword pseudo-scope resolution
+* Issue #5 forward-keyword fail-closed behavior
+* Issue #5 outside-call pseudo-scope boundaries
+* quoted PDF navigation
+* quoted DOCX navigation
+* quoted JPG navigation
+
+At the current v2.0.1 development checkpoint, the complete suite contains 16 passing automated tests.
+
+---
+
+## Inspection Fixtures vs. Navigation Fixtures
+
+Inspection tests and navigation tests have different filesystem requirements.
+
+Ordinary inspection tests can use normal IntelliJ fixture sources or shared files under:
+
+```text
+src/test/testData/
+```
+
+For example, the GitHub Issues #1–#8 no-warning regression corpus can be loaded as Python test data because the inspection is primarily verifying whether Resource Navigator emits or suppresses diagnostics.
+
+Navigation integration tests are different. Resource Navigator resolves local resources through the actual filesystem. IntelliJ light fixtures created with `configureByText()` or `addFileToProject()` can live in the temporary IntelliJ VFS under locations such as:
+
+```text
+temp:///src/example.py
+```
+
+Those virtual paths are not equivalent to normal operating-system filesystem paths and cannot always be mapped through `java.nio.file.Path`.
+
+Therefore filesystem-backed navigation tests should:
+
+1. Create a real temporary directory with `java.nio.file.Files`.
+2. Create the resource target on the real filesystem.
+3. Write the Python fixture itself to the real filesystem.
+4. Refresh and obtain the Python source through `LocalFileSystem`.
+5. Configure the fixture from that real `VirtualFile`.
+6. Place the editor caret at the resource literal.
+7. Inspect and resolve the contributed Resource Navigator PSI reference.
+
+Conceptually:
+
+```text
+Real temporary .py file
+        │
+        ▼
+LocalFileSystem VirtualFile
+        │
+        ▼
+PyStringLiteralExpression
+        │
+        ▼
+ResourceReferenceContributor
+        │
+        ▼
+ResourceReferenceLocal
+        │
+        ▼
+ResourceResolver
+        │
+        ▼
+ResourceNavigationTargetFactory
+        │
+        ▼
+ResourceNavigationElement
+```
+
+This arrangement keeps automated navigation tests aligned with normal production filesystem semantics.
+
+---
+
+## Testing Synthetic Navigation Targets
+
+`ResourceReferenceLocal.resolve()` intentionally returns a synthetic `ResourceNavigationElement` rather than the underlying target `PsiFile` or `PsiDirectory`.
+
+This is an important part of Resource Navigator's navigation architecture. Returning the underlying PSI file directly could allow IntelliJ to bypass Resource Navigator's dispatch policy for resources that should open in a browser, external application, or native file manager.
+
+Consequently, navigation tests must not assume:
+
+```kotlin
+reference.resolve()!!.containingFile
+```
+
+is the resource target. The synthetic navigation element remains associated with the source Python PSI.
+
+Instead, positive navigation tests should verify that:
+
+1. the Resource Navigator reference exists
+2. `resolve()` returns a `ResourceNavigationElement`
+3. the navigation element exposes the expected resolved resource location
+4. the location matches the real filesystem target created by the test
+
+The resolved location is exposed through `ResourceNavigationElement.getLocationString()` / Kotlin `locationString`.
+
+This tests the same synthetic-target architecture used by production Ctrl+Click navigation without actually launching Excel, Word, a browser, an image viewer, or another external application during the automated test run.
+
+---
+
+## Test Responsibilities
+
+The automated suite is intentionally divided by responsibility.
+
+```text
+ResourceClassifierTest
+    │
+    └── classification and low-level resource recognition
+
+MissingResourceInspectionTest
+    │
+    └── no-false-positive inspection regression corpus
+
+MissingResourcePositiveDiagnosticsTest
+    │
+    └── deliberately missing resources must produce diagnostics
+
+ResourceReferenceNavigationTest
+    │
+    └── PSI reference contribution and resolved navigation targets
+```
+
+Manual IDE smoke testing remains useful for behavior that crosses process or operating-system boundaries, including:
+
+* Ctrl+Click interaction in an installed/sandbox plugin
+* browser dispatch
+* Microsoft Office / associated-application dispatch
+* image-viewer dispatch
+* native file-manager navigation
+* Quick Documentation presentation
+
+Automated tests should verify deterministic plugin logic wherever possible; manual smoke tests should verify the final IDE and operating-system integration behavior.
+
+---
+
 ## Experimental API Usage
 
 IntelliJ Plugin Verifier currently reports five usages of experimental PyCharm Python APIs across four API methods:
@@ -820,7 +971,7 @@ Planned areas of continued development include:
 * additional deterministic Python syntax recognition
 * improved dictionary semantics
 * Alt-Enter quick fixes
-* expanded automated testing
+* continued expansion of automated integration and navigation-policy coverage
 * Marketplace packaging
 * performance optimization for large projects
 

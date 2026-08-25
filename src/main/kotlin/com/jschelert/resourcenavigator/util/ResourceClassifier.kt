@@ -27,6 +27,8 @@ import java.net.URI
  * • Applies lightweight filesystem-path heuristics.
  * • Rejects blank values and resolved values containing line breaks.
  * • Rejects filesystem glob patterns.
+ * • Rejects separator-only strings that do not identify a concrete resource.
+ * • Rejects descriptive f-strings that embed a resource inside surrounding prose.
  * • Provides additional filtering for missing-resource inspection.
  * • Recognizes absolute filesystem paths regardless of filename extension.
  *
@@ -38,6 +40,8 @@ import java.net.URI
  * • Extract normalized filename extensions.
  * • Apply configurable local-resource heuristics.
  * • Exclude glob patterns representing collections rather than resources.
+ * • Exclude separator-only strings such as "\" and "\\".
+ * • Distinguish standalone resource f-strings from descriptive f-string prose.
  * • Determine whether a candidate is appropriate for missing-resource
  *   inspection.
  *
@@ -161,7 +165,12 @@ import java.net.URI
  * • Added classification of absolute Windows, UNC, and Unix filesystem paths
  *   regardless of filename extension, enabling direct navigation to directories
  *   and extensionless resources.
- */
+ * • Added rejection of descriptive interpolated strings such as
+ *   f"Generate {RESOURCE}" while preserving standalone resource f-strings such as
+ *   f"{RESOURCE}", f"docs/{NAME}.pdf", and f"{BASE}/docs/{NAME}.pdf".
+ * • Added rejection of separator-only strings so escaped backslash literals do
+ *   not become false-positive local resource candidates.
+*/
  */
 
 object ResourceClassifier {
@@ -175,48 +184,48 @@ object ResourceClassifier {
     )
 
 
-/**
- * Determine whether a resolved Python string value should be treated as a
- * navigable resource candidate.
- *
- * Resource Classification
- * -----------------------
- *
- * +--------------------------------------+--------------------------------------+----------------------+
- * | Resolved Value / Context             | Classification                       | Result               |
- * +--------------------------------------+--------------------------------------+----------------------+
- * | "https://example.com"                | Supported URL                        | URL setting          |
- * | "docs/manual.pdf"                    | Extension + path-like value          | true                 |
- * | "manual.pdf"                         | Extension + path-like value          | true                 |
- * | Path("manual")                       | pathlib constructor argument         | true                 |
- * | "docs/manual.xyz"                    | Unrecognized extension               | Setting dependent    |
- * | "docs/manual"                        | Path-like, no recognized extension   | Setting dependent    |
- * | "*.pdf"                              | Glob pattern                         | false                |
- * | "docs/*.pdf"                         | Glob pattern                         | false                |
- * | ""                                   | Blank value                          | false                |
- * | "line1\nline2"                       | Resolved value contains line break   | false                |
- * | "C:\Docs"                            | Absolute filesystem path             | true                 |
- * | "/home/user/docs"                    | Absolute filesystem path             | true                 |
- * +--------------------------------------+--------------------------------------+----------------------+
- *
- * Behavior
- * --------
- * • Rejects blank resolved values.
- * • Rejects resolved values containing line breaks.
- * • Rejects filesystem glob patterns.
- * • Recognizes supported HTTP and HTTPS URLs when URL navigation is enabled.
- * • Recognizes arguments to supported pathlib constructors.
- * • Recognizes path-like values with configured filename extensions.
- * • Optionally accepts broader path-like values when acceptAnyPathLikeValue
- *   is enabled.
- *
- * This function performs classification only. It does not access the
- * filesystem or determine whether a local resource actually exists.
- *
- * Multiline or adjacent Python source literals remain supported when their
- * reconstructed compile-time value contains no actual line breaks.
- */
- */
+    /**
+     * Determine whether a resolved Python string value should be treated as a
+     * navigable resource candidate.
+     *
+     * Resource Classification
+     * -----------------------
+     *
+     * +--------------------------------------+--------------------------------------+----------------------+
+     * | Resolved Value / Context             | Classification                       | Result               |
+     * +--------------------------------------+--------------------------------------+----------------------+
+     * | "https://example.com"                | Supported URL                        | URL setting          |
+     * | "docs/manual.pdf"                    | Extension + path-like value          | true                 |
+     * | "manual.pdf"                         | Extension + path-like value          | true                 |
+     * | Path("manual")                       | pathlib constructor argument         | true                 |
+     * | "docs/manual.xyz"                    | Unrecognized extension               | Setting dependent    |
+     * | "docs/manual"                        | Path-like, no recognized extension   | Setting dependent    |
+     * | "*.pdf"                              | Glob pattern                         | false                |
+     * | "docs/*.pdf"                         | Glob pattern                         | false                |
+     * | ""                                   | Blank value                          | false                |
+     * | "line1\nline2"                       | Resolved value contains line break   | false                |
+     * | "C:\Docs"                            | Absolute filesystem path             | true                 |
+     * | "/home/user/docs"                    | Absolute filesystem path             | true                 |
+     * +--------------------------------------+--------------------------------------+----------------------+
+     *
+     * Behavior
+     * --------
+     * • Rejects blank resolved values.
+     * • Rejects resolved values containing line breaks.
+     * • Rejects filesystem glob patterns.
+     * • Recognizes supported HTTP and HTTPS URLs when URL navigation is enabled.
+     * • Recognizes arguments to supported pathlib constructors.
+     * • Recognizes path-like values with configured filename extensions.
+     * • Optionally accepts broader path-like values when acceptAnyPathLikeValue
+     *   is enabled.
+     *
+     * This function performs classification only. It does not access the
+     * filesystem or determine whether a local resource actually exists.
+     *
+     * Multiline or adjacent Python source literals remain supported when their
+     * reconstructed compile-time value contains no actual line breaks.
+    */
+     */
 
     fun shouldHandle(
         element: PyStringLiteralExpression,
@@ -238,6 +247,22 @@ object ResourceClassifier {
         // Reject glob patterns representing collections of resources.
         //
         if (isGlobPattern(value)) {
+            return false
+        }
+
+        //
+        // Reject values composed only of filesystem separators. A slash or
+        // escaped backslash sequence alone does not identify a concrete resource.
+        //
+        if (isSeparatorOnlyPath(value)) {
+            return false
+        }
+
+        //
+        // Reject interpolated strings whose source form is descriptive prose
+        // containing a resource rather than a standalone resource expression.
+        //
+        if (isDescriptiveFString(element)) {
             return false
         }
 
@@ -338,7 +363,7 @@ object ResourceClassifier {
      * The additional filters prevent intentionally dynamic, special, or
      * collection-oriented strings from generating misleading missing-resource
      * warnings.
-     */
+    */
      */
     fun shouldInspectMissing(
         literal: PyStringLiteralExpression,
@@ -385,6 +410,118 @@ object ResourceClassifier {
     }
 
     /**
+     * Return true when the supplied value consists only of filesystem path
+     * separators and therefore cannot identify a concrete resource.
+     *
+     * Separator-Only Detection
+     * ------------------------
+     *
+     * +----------------------+-----------------------------+--------+
+     * | Value                | Interpretation              | Result |
+     * +----------------------+-----------------------------+--------+
+     * | "\"                  | Separator only              | true   |
+     * | "\\"                 | Separator only              | true   |
+     * | "/"                  | Separator only              | true   |
+     * | "//"                 | Separator only              | true   |
+     * | "docs\manual.pdf"    | Concrete relative path      | false  |
+     * | "C:\Temp"            | Concrete absolute path      | false  |
+     * | "\\server\share"     | Concrete UNC path           | false  |
+     * +----------------------+-----------------------------+--------+
+     *
+     * This guard is intentionally narrow. It rejects only non-empty strings made
+     * entirely from slash and backslash characters, preserving normal Windows,
+     * UNC, Unix, and relative resource paths.
+     */
+    private fun isSeparatorOnlyPath(
+        value: String,
+    ): Boolean =
+        value.isNotEmpty() &&
+                value.all {
+                    it == '/' ||
+                            it == '\\'
+                }
+
+    /**
+     * Return true when an interpolated Python string is descriptive prose rather
+     * than a standalone resource expression.
+     *
+     * F-String Resource Shape
+     * -----------------------
+     *
+     * +--------------------------------------+--------------------------------------+--------+
+     * | Python Source                        | Interpretation                       | Result |
+     * +--------------------------------------+--------------------------------------+--------+
+     * | f"{RESOURCE}"                        | Pure resource interpolation          | false  |
+     * | f"docs/{NAME}.pdf"                   | Resource path construction           | false  |
+     * | f"{BASE}/docs/{NAME}.pdf"            | Resource path construction           | false  |
+     * | f"Generate {RESOURCE}"               | Descriptive prose + resource         | true   |
+     * | f"Writing file {RESOURCE}"           | Descriptive prose + resource         | true   |
+     * +--------------------------------------+--------------------------------------+--------+
+     *
+     * The check operates on the source-oriented literal text rather than the
+     * resolved value. This preserves legitimate spaces inside resource names
+     * while rejecting ordinary prose that precedes the first interpolation.
+     *
+     * A non-empty literal prefix is considered resource construction when it
+     * already has path syntax or terminates at a path boundary. Otherwise it is
+     * treated as descriptive prose.
+     */
+    private fun isDescriptiveFString(
+        element: PyStringLiteralExpression,
+    ): Boolean {
+
+        //
+        // Ordinary Python strings are never descriptive f-strings.
+        //
+        if (!element.isInterpolated)
+            return false
+
+        //
+        // Obtain the source-oriented literal contents without quote/prefix syntax.
+        //
+        val source =
+            PythonStringUtil.contentText(element)
+                .trim()
+
+        //
+        // Locate the first actual interpolation marker in the source text.
+        //
+        val interpolationIndex =
+            source.indexOf('{')
+
+        if (interpolationIndex < 0)
+            return false
+
+        //
+        // Pure interpolation has no descriptive prefix.
+        //
+        val prefix =
+            source.substring(0, interpolationIndex)
+
+        if (prefix.isEmpty())
+            return false
+
+        //
+        // A prefix ending at a path separator or containing explicit path syntax
+        // is part of resource construction rather than descriptive prose.
+        //
+        if (
+            prefix.endsWith("/") ||
+            prefix.endsWith("\\") ||
+            prefix.contains('/') ||
+            prefix.contains('\\') ||
+            Regex("^[A-Za-z]:").containsMatchIn(prefix)
+        ) {
+            return false
+        }
+
+        //
+        // A remaining whitespace-delimited prefix is ordinary descriptive text.
+        //
+        return prefix.any { it.isWhitespace() }
+    }
+
+    /**
      * Return true if the supplied string represents a supported HTTP or HTTPS
      * URL.
      *
@@ -418,9 +555,9 @@ object ResourceClassifier {
         value: String,
     ): Boolean =
 
-        //
-        // Parse the value as a URI and test its normalized scheme.
-        // Treat malformed or otherwise unparseable values as non-URLs.
+    //
+    // Parse the value as a URI and test its normalized scheme.
+    // Treat malformed or otherwise unparseable values as non-URLs.
         //
         runCatching {
             URI(value).scheme
@@ -458,14 +595,14 @@ object ResourceClassifier {
      *
      * This is intentionally a lightweight heuristic rather than a complete
      * filesystem-glob parser.
-     */
+    */
      */
     private fun isGlobPattern(
         value: String,
     ): Boolean =
 
-        //
-        // Detect supported filesystem glob wildcard characters.
+    //
+    // Detect supported filesystem glob wildcard characters.
         //
         value.contains('*') ||
                 value.contains('?')
@@ -527,8 +664,8 @@ object ResourceClassifier {
         value: String,
     ): Boolean =
 
-        //
-        // Recognize Unix absolute paths, Windows drive paths, and UNC paths.
+    //
+    // Recognize Unix absolute paths, Windows drive paths, and UNC paths.
         //
         value.startsWith("/") ||
                 Regex("^[A-Za-z]:[\\\\/]").containsMatchIn(value) ||

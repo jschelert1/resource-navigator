@@ -5,6 +5,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.jetbrains.python.psi.PyStringLiteralExpression
+import com.jschelert.resourcenavigator.util.PythonResourceContext
 import com.jschelert.resourcenavigator.util.PythonStringResolver
 import com.jschelert.resourcenavigator.util.ResourceKind
 import com.jschelert.resourcenavigator.util.ResourceResolver
@@ -24,7 +25,8 @@ import java.nio.file.Paths
  * Behavior
  * --------
  * • Locates the Python string literal associated with the documentation request.
- * • Resolves Python strings through PythonStringResolver.
+ * • Determines the complete resource expression through PythonResourceContext.
+ * • Resolves resource expressions through PythonStringResolver.
  * • Resolves reconstructed string values through ResourceResolver.
  * • Displays URL information for HTTP/HTTPS resources.
  * • Displays existence status, detected file type, file size, and resolved path
@@ -34,13 +36,15 @@ import java.nio.file.Paths
  * Responsibilities
  * ----------------
  * • Locate the enclosing Python string literal.
- * • Evaluate the Python literal into its reconstructed compile-time value.
+ * • Determine the complete resource evaluation expression.
+ * • Evaluate that expression into its reconstructed compile-time value.
  * • Resolve the reconstructed value into a ResourceTarget.
  * • Generate concise Quick Documentation HTML for the resolved resource.
  * • Present local-resource metadata without performing navigation.
  *
  * Dependencies
  * ------------
+ * • PythonResourceContext
  * • PythonStringResolver
  * • ResourceResolver
  * • ResourceKind
@@ -57,6 +61,9 @@ import java.nio.file.Paths
  *         |
  *         v
  *     PyStringLiteralExpression
+ *         |
+ *         v
+ *     PythonResourceContext
  *         |
  *         v
  *     PythonStringResolver
@@ -77,8 +84,9 @@ import java.nio.file.Paths
  *         v
  *     Quick Documentation HTML
  *
- * PythonStringResolver determines the reconstructed compile-time value of the
- * Python literal. ResourceResolver then interprets that value as a supported
+ * PythonResourceContext determines the complete resource expression and
+ * PythonStringResolver reconstructs its compile-time value. ResourceResolver
+ * then interprets that value as a supported
  * Resource Navigator resource. The resulting ResourceTarget supplies the
  * metadata used to construct the Quick Documentation display.
  *
@@ -92,8 +100,9 @@ import java.nio.file.Paths
  *   means, while ResourceResolver determines what resource that value
  *   represents.
  *
- * • Resource resolution uses the same PythonStringResolver → ResourceResolver
- *   pipeline used by the navigation subsystem, keeping documentation behavior
+ * • Resource resolution uses the same PythonResourceContext → PythonStringResolver
+ *   → ResourceResolver pipeline used by the navigation subsystem, keeping
+ *   documentation behavior
  *   consistent with resource navigation.
  *
  * • Local file size is queried only when the resolved resource exists and can
@@ -124,6 +133,13 @@ import java.nio.file.Paths
  *   compile-time string value.
  * • Documented the shared PythonStringResolver → ResourceResolver resolution
  *   pipeline used by Quick Documentation and resource navigation.
+ *
+ * v2.1.0 — 2026-08-25 (JS)
+ * • Updated Quick Documentation to resolve the complete resource evaluation
+ *   expression through PythonResourceContext before PythonStringResolver.
+ * • Added Quick Documentation support for compound resources using previous
+ *   same-call keyword arguments introduced for Issue #5.
+ * • Kept hover metadata consistent with Ctrl+Click navigation targets.
  */
 class ResourceDocumentationProvider : AbstractDocumentationProvider() {
 
@@ -168,14 +184,25 @@ class ResourceDocumentationProvider : AbstractDocumentationProvider() {
             ) ?: return null
 
         //
-        // Resolve the Python literal into its reconstructed compile-time value.
+        // Determine the complete resource expression represented by the literal.
+        // This preserves compound contexts such as:
+        //
+        //     base_path / "manual.pdf"
+        //
+        // including Resource Navigator's previous-keyword resolution convention.
+        //
+        val expression =
+            PythonResourceContext.evaluationExpression(literal)
+
+        //
+        // Resolve the complete expression into its reconstructed compile-time value.
         //
         val resolved =
-            PythonStringResolver.resolve(literal)
+            PythonStringResolver.resolve(expression)
                 ?: return null
 
         //
-        // Resolve the reconstructed string value as a resource.
+        // Resolve the reconstructed expression value as a resource.
         //
         val target =
             ResourceResolver.resolve(
