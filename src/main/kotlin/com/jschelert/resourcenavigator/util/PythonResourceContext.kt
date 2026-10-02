@@ -20,6 +20,7 @@ import com.jetbrains.python.psi.PyStringLiteralExpression
  *
  * Behavior
  * --------
+ * • Detects Python documentation/docstring string literals.
  * • Detects pathlib constructor arguments.
  * • Identifies supported pathlib wrapper types.
  * • Determines the enclosing compile-time expression for resource evaluation.
@@ -31,6 +32,7 @@ import com.jetbrains.python.psi.PyStringLiteralExpression
  * Responsibilities
  * ----------------
  * • Inspect Python PSI context.
+ * • Identify documentation strings shared by navigation and inspection.
  * • Recognize supported pathlib constructors.
  * • Determine supported compile-time evaluation scope.
  * • Preserve separation between evaluation scope and hyperlink source.
@@ -66,6 +68,12 @@ import com.jetbrains.python.psi.PyStringLiteralExpression
  *   operators, or language constructs) should be added here rather than
  *   distributed throughout the navigation codebase.
  *
+ * Revision History
+ * ----------------
+ * v1.1.0 — 2026-10-02 (JS)
+ * • Added shared Python docstring detection for navigation and missing-resource inspection.
+ * • Established docstrings as documentation unless a resource is explicitly bracketed.
+ *
  *   PyStringLiteralExpression
  *         │
  *         ├── hyperlink/source range ────────────────┐
@@ -85,6 +93,21 @@ import com.jetbrains.python.psi.PyStringLiteralExpression
  *
  */
 object PythonResourceContext {
+
+    /**
+     * Return true when the supplied Python string literal is a documentation string.
+     *
+     * Resource Navigator treats docstrings as documentation by default. Explicit
+     * bracketed citations remain opt-in resources, while quoted and ordinary path-like
+     * text inside the docstring is ignored by navigation and missing-resource inspection.
+     */
+    fun isDocumentationString(
+        element: PyStringLiteralExpression,
+    ): Boolean =
+
+        element.stringElements.any { stringElement ->
+            stringElement.node.elementType == PyTokenTypes.DOCSTRING
+        }
 
     /**
      * Return true if the supplied string literal is the argument to a supported

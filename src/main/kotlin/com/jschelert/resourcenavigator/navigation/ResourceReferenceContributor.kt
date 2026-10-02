@@ -33,7 +33,8 @@ import com.jschelert.resourcenavigator.util.PythonResourceContext
  * --------
  * • Registers a PSI reference provider for Python string literals.
  * • Gives precedence to bracketed resource citations.
- * • Recognizes explicitly quoted resources embedded in descriptive text.
+ * • Requires explicit bracket syntax for resources inside Python docstrings.
+ * • Recognizes explicitly quoted resources embedded in descriptive text outside docstrings.
  * • Preserves ordinary one-resource-per-string navigation.
  * • Resolves ordinary Python strings through PythonStringResolver.
  * • Filters candidate resources using ResourceClassifier.
@@ -145,6 +146,11 @@ import com.jschelert.resourcenavigator.util.PythonResourceContext
  *
  * Revision History
  * ----------------
+ * v2.1.0 — 2026-10-02 (JS)
+ * • Added shared Python docstring detection through PythonResourceContext.
+ * • Preserved bracketed citations as explicit docstring resources while suppressing
+ *   quoted and ordinary path-like references inside documentation strings.
+ *
  * v2.0.0 — 2026-07-23 (JS)
  * • Refactored ordinary resource handling to evaluate Python string literals
  *   through PythonStringResolver before classification and resolution.
@@ -235,6 +241,14 @@ class ResourceReferenceContributor : PsiReferenceContributor() {
                             literal = literal,
                             citations = citations,
                         )
+                    }
+
+                    //
+                    // Docstrings require explicit bracket syntax. Quoted and ordinary
+                    // path-like text remains documentation and must not create references.
+                    //
+                    if (PythonResourceContext.isDocumentationString(literal)) {
+                        return PsiReference.EMPTY_ARRAY
                     }
 
                     //

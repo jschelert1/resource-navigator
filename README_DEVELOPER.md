@@ -453,6 +453,7 @@ Determines the supported syntactic and evaluation context of a Python string lit
 
 Responsibilities include:
 
+* identifying Python documentation/docstring string literals
 * recognizing supported pathlib constructors
 * determining the enclosing compile-time evaluation expression
 * expanding through supported `+` and `/` binary expressions
@@ -517,7 +518,8 @@ Responsibilities include:
 * path-like value heuristics
 * absolute Windows, UNC, and Unix path recognition
 * glob-pattern rejection
-* missing-resource inspection filtering
+* policy-driven missing-resource inspection filtering
+* separation of permissive positive navigation from conservative negative inspection
 
 The classifier performs no filesystem access.
 
@@ -534,8 +536,9 @@ Responsibilities include:
 * absolute filesystem paths
 * URL targets
 * resource existence and target construction
+* read-only lookup of IntelliJ's current VFS state during resource resolution
 
-Compile-time Python evaluation is delegated to the Python evaluation subsystem.
+Compile-time Python evaluation is delegated to the Python evaluation subsystem. Resolution must not synchronously refresh the VFS because reference discovery and inspections may execute under IntelliJ read locks.
 
 ---
 
@@ -656,6 +659,7 @@ The following rules keep subsystem responsibilities separated.
 Responsible for:
 
 * Python PSI context
+* documentation/docstring context
 * supported evaluation scope
 
 Not responsible for:
@@ -746,7 +750,9 @@ It should not duplicate resource classification, compile-time evaluation, or ext
 
 # Development Environment and Compatibility
 
-Resource Navigator 2.0.1 is developed and built against:
+The authoritative source-tree version is defined by the `version` property in `gradle.properties`; published versions are identified by the corresponding GitHub release and Git tag. This guide uses explicit version numbers only for historical architecture and compatibility context.
+
+Resource Navigator is developed and built against:
 
 * PyCharm 2026.2 (Build 262)
 * JDK 25
@@ -782,7 +788,9 @@ Run the complete automated suite with:
 The current regression suite includes coverage for:
 
 * resource classification behavior
-* GitHub Issues #1–#8 no-false-positive inspection cases
+* GitHub Issues #1–#10 regression coverage
+* Issue #9 missing-resource policy and false-positive classification cases
+* Issue #10 bracketed-versus-quoted docstring resource behavior
 * positive missing-resource diagnostics
 * standalone existing-resource navigation
 * static `pathlib.Path` composition
@@ -792,8 +800,11 @@ The current regression suite includes coverage for:
 * quoted PDF navigation
 * quoted DOCX navigation
 * quoted JPG navigation
+* existing bare-filename navigation independent of missing-resource warning policy
+* bracketed docstring navigation and missing-resource diagnostics
+* quoted docstring resource suppression
 
-At the current v2.0.1 development checkpoint, the complete suite contains 16 passing automated tests.
+The suite is intentionally expected to grow as regressions are encoded. The authoritative checkpoint is a successful complete `./gradlew test` run rather than a hard-coded test count.
 
 ---
 
@@ -807,7 +818,7 @@ Ordinary inspection tests can use normal IntelliJ fixture sources or shared file
 src/test/testData/
 ```
 
-For example, the GitHub Issues #1–#8 no-warning regression corpus can be loaded as Python test data because the inspection is primarily verifying whether Resource Navigator emits or suppresses diagnostics.
+For example, the GitHub Issues #1–#10 inspection regression corpus can use Python fixture sources when the test is primarily verifying whether Resource Navigator emits or suppresses diagnostics.
 
 Navigation integration tests are different. Resource Navigator resolves local resources through the actual filesystem. IntelliJ light fixtures created with `configureByText()` or `addFileToProject()` can live in the temporary IntelliJ VFS under locations such as:
 
@@ -917,6 +928,18 @@ Manual IDE smoke testing remains useful for behavior that crosses process or ope
 * Quick Documentation presentation
 
 Automated tests should verify deterministic plugin logic wherever possible; manual smoke tests should verify the final IDE and operating-system integration behavior.
+
+### Missing-Resource Confidence Policy
+
+Navigation and missing-resource inspection deliberately have different confidence requirements.
+
+* **Conservative** — inferred non-bracketed missing resources remain silent.
+* **Balanced** — the default; missing diagnostics require strong filesystem structure, while ambiguous bare filenames and shallow API-like fragments remain silent.
+* **Aggressive** — after universal false-positive exclusions, missing-resource classification follows the ordinary PSI-aware resource classifier.
+
+Universal inspection exclusions include known command-line switches, glob patterns, separator-only values, standalone textual escape/control fragments, leading-dot fragments, and unresolved-brace values.
+
+Explicit bracketed resources are handled before inferred-resource policy classification. In Python docstrings this distinction is especially important: `[path]` is explicit Resource Navigator syntax, while quoted and ordinary path-like documentation text is ignored.
 
 ---
 

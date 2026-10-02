@@ -29,7 +29,8 @@ import java.net.URI
  * • Rejects filesystem glob patterns.
  * • Rejects separator-only strings that do not identify a concrete resource.
  * • Rejects descriptive f-strings that embed a resource inside surrounding prose.
- * • Provides additional filtering for missing-resource inspection.
+ * • Provides policy-driven filtering for missing-resource inspection.
+ * • Separates permissive positive navigation from conservative negative inspection.
  * • Recognizes absolute filesystem paths regardless of filename extension.
  *
  * Responsibilities
@@ -79,13 +80,16 @@ import java.net.URI
  *              v
  *     shouldInspectMissing()
  *              |
- *              +----> reject empty value
- *              +----> reject unresolved braces
- *              +----> reject leading-dot value
- *              +----> reject glob pattern
+ *              +----> universal inspection exclusions
  *              |
  *              v
- *         shouldHandle()
+ *     MissingResourcePolicy
+ *              |
+ *              +----> CONSERVATIVE -> false
+ *              |
+ *              +----> BALANCED -> strong filesystem structure
+ *              |
+ *              +----> AGGRESSIVE -> shouldHandle()
  *
  * Examples
  * --------
@@ -149,6 +153,23 @@ import java.net.URI
  *
  * Revision History
  * ----------------
+ * v2.2.2 — 2026-10-02 (JS)
+ * • Simplified PSI-aware missing-resource inspection to one exclusion gate and one policy dispatch.
+ * • Aggressive mode now delegates directly to shouldHandle() after universal inspection exclusions.
+ *
+ * v2.2.1 — 2026-10-02 (JS)
+ * • Added inspection-only rejection for standalone textual escape/control fragments such as "\\n" and "\\t".
+ * • Preserved legitimate Windows relative paths and permissive positive navigation behavior.
+ *
+ * v2.2.0 — 2026-10-02 (JS)
+ * • Added Conservative, Balanced, and Aggressive missing-resource inspection policies.
+ * • Added pure value/policy inspection classification for unit testing.
+ * • Preserved permissive navigation classification independently from missing-resource policy.
+ *
+ * v2.1.0 — 2026-10-02 (JS)
+ * • Added conservative missing-resource rejection for command-line switches such
+ *   as "/F" and "/IM" without changing normal absolute-path navigation.
+ *
  * v2.0.0 — 2026-07-23 (JS)
  * • Updated classification to operate on resolved compile-time Python string
  *   values produced by PythonStringResolver.
@@ -329,85 +350,151 @@ object ResourceClassifier {
      * Determine whether a resolved Python string should participate in the
      * missing-resource inspection.
      *
-     * Missing-Resource Inspection
-     * ---------------------------
-     *
-     * +--------------------------------------+--------------------------------------+------------------+
-     * | Resolved Value                       | Inspection Decision                  | Result           |
-     * +--------------------------------------+--------------------------------------+------------------+
-     * | "docs/manual.pdf"                    | Valid resource candidate             | shouldHandle()   |
-     * | "C:\Docs\manual.pdf"                 | Valid resource candidate             | shouldHandle()   |
-     * | ""                                   | Empty value                          | false            |
-     * | "{filename}"                         | Unresolved interpolation braces      | false            |
-     * | "docs/{filename}.pdf"                | Unresolved interpolation braces      | false            |
-     * | ".gitignore"                         | Leading-dot value                    | false            |
-     * | "*.pdf"                              | Glob pattern                         | false            |
-     * | "docs/*.pdf"                         | Glob pattern                         | false            |
-     * | "ordinary text"                      | Not a resource candidate             | false            |
-     * +--------------------------------------+--------------------------------------+------------------+
-     *
-     * Behavior
-     * --------
-     * • Uses the reconstructed compile-time value from PythonResolvedString.
-     * • Trims surrounding whitespace before inspection.
-     * • Rejects empty values.
-     * • Rejects values containing unresolved brace syntax.
-     * • Rejects leading-dot values.
-     * • Rejects filesystem glob patterns.
-     * • Delegates final resource classification to shouldHandle().
-     *
-     * This function determines only whether a literal is eligible for missing-
-     * resource inspection. ResourceResolver subsequently determines whether the
-     * candidate actually resolves to an existing resource.
-     *
-     * The additional filters prevent intentionally dynamic, special, or
-     * collection-oriented strings from generating misleading missing-resource
-     * warnings.
-    */
+     * Universal inspection exclusions are applied once before policy dispatch.
+     * Conservative rejects inferred resources, Balanced requires strong filesystem
+     * structure, and Aggressive delegates to the ordinary PSI-aware navigation
+     * classifier so pathlib and configured navigation behavior remain available.
      */
     fun shouldInspectMissing(
         literal: PyStringLiteralExpression,
         resolved: PythonResolvedString,
     ): Boolean {
 
-        //
-        // Obtain the normalized compile-time value used for inspection.
-        //
         val value =
             resolved.resolvedString.trim()
 
         //
-        // Reject empty resolved values.
+        // Correctness guards apply before every policy decision. Explicit bracketed
+        // resources are handled by MissingResourceInspection before this classifier.
         //
-        if (value.isEmpty())
+        if (isMissingInspectionExcluded(value))
             return false
 
-        //
-        // Reject values retaining unresolved interpolation-style braces.
-        //
-        if ('{' in value || '}' in value)
-            return false
+        return when (
+            ResourceNavigatorSettings.getInstance().state.missingResourcePolicy
+        ) {
 
-        //
-        // Reject leading-dot values such as hidden or special filenames.
-        //
-        if (value.startsWith("."))
-            return false
+            ResourceNavigatorSettings.MissingResourcePolicy.CONSERVATIVE ->
+                false
 
-        //
-        // Reject glob patterns representing collections rather than resources.
-        //
-        if (isGlobPattern(value))
-            return false
+            ResourceNavigatorSettings.MissingResourcePolicy.BALANCED ->
+                looksLikeStrongFilesystemPath(value)
 
-        //
-        // Apply the normal Resource Navigator classification rules.
-        //
-        return shouldHandle(
-            literal,
-            value,
-        )
+            ResourceNavigatorSettings.MissingResourcePolicy.AGGRESSIVE ->
+                shouldHandle(
+                    literal,
+                    value,
+                )
+        }
     }
+
+    /**
+     * Determine whether a string value is sufficiently resource-like to justify a
+     * missing-resource diagnostic under the supplied confidence policy.
+     *
+     * This overload is intentionally PSI- and filesystem-independent so the negative
+     * classification policy can be tested directly.
+     */
+    fun shouldInspectMissing(
+        value: String,
+        policy: ResourceNavigatorSettings.MissingResourcePolicy,
+    ): Boolean {
+
+        val normalized =
+            value.trim()
+
+        //
+        // Correctness guards apply in every policy mode.
+        //
+        if (isMissingInspectionExcluded(normalized))
+            return false
+
+        return when (policy) {
+
+            ResourceNavigatorSettings.MissingResourcePolicy.CONSERVATIVE ->
+                false
+
+            ResourceNavigatorSettings.MissingResourcePolicy.BALANCED ->
+                looksLikeStrongFilesystemPath(normalized)
+
+            ResourceNavigatorSettings.MissingResourcePolicy.AGGRESSIVE ->
+                looksLikeFilePath(normalized) ||
+                        looksLikeAbsolutePath(normalized)
+        }
+    }
+
+    /**
+     * Return true for values that must never generate inferred missing-resource
+     * diagnostics, regardless of confidence policy.
+     */
+    private fun isMissingInspectionExcluded(
+        value: String,
+    ): Boolean =
+        value.isEmpty() ||
+                value.contains('\n') ||
+                value.contains('\r') ||
+                isEscapeControlFragment(value) ||
+                '{' in value ||
+                '}' in value ||
+                value.startsWith(".") ||
+                isGlobPattern(value) ||
+                isSeparatorOnlyPath(value) ||
+                isCommandLineSwitch(value)
+
+    /**
+     * Return true when a value has enough filesystem structure for Balanced
+     * missing-resource inspection.
+     *
+     * Bare filenames remain ambiguous. Relative paths require an explicit separator.
+     * Windows drive paths and UNC paths are strong. Unix absolute paths require at
+     * least two non-empty path components so shallow API fragments such as
+     * "/json/version" remain silent while "/home/user/file.json" is accepted.
+     */
+    private fun looksLikeStrongFilesystemPath(
+        value: String,
+    ): Boolean {
+
+        if (Regex("^[A-Za-z]:[\\\\/]").containsMatchIn(value))
+            return true
+
+        if (value.startsWith("\\\\"))
+            return value.removePrefix("\\\\")
+                .split('\\')
+                .count { it.isNotEmpty() } >= 2
+
+        if (value.startsWith("/"))
+            return value.split('/')
+                .count { it.isNotEmpty() } >= 3
+
+        return value.contains('/') ||
+                value.contains('\\')
+    }
+
+    /**
+     * Return true when the entire value is a textual escape/control fragment rather
+     * than a filesystem path.
+     *
+     * This guard is intentionally narrow and inspection-only. It recognizes standalone
+     * backslash escape tokens such as "\n" and "\t" while preserving legitimate
+     * Windows relative paths such as "docs\missing.pdf" and "folder\name.txt".
+     */
+    private fun isEscapeControlFragment(
+        value: String,
+    ): Boolean =
+        Regex("""^\\[abfnrtv]$""").matches(value)
+
+    /**
+     * Return true when the supplied value has the compact shape of a Windows-style
+     * command-line switch rather than a concrete Unix filesystem path.
+     *
+     * The guard is intentionally inspection-only and conservative: a leading slash
+     * followed by one alphanumeric option token is rejected, while values containing
+     * another path separator remain eligible as ordinary absolute paths.
+     */
+    private fun isCommandLineSwitch(
+        value: String,
+    ): Boolean =
+        Regex("^/[A-Za-z0-9][A-Za-z0-9_-]*$").matches(value)
 
     /**
      * Return true when the supplied value consists only of filesystem path

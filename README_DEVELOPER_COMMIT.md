@@ -29,6 +29,10 @@ Increment:
 version=x.y.z
 ```
 
+`gradle.properties` is the authoritative source-tree version. Do not duplicate the current version in README or developer-documentation headings merely to keep them synchronized. Explicit version numbers in documentation should be retained when they describe historical milestones, feature introductions, compatibility facts, or release examples.
+
+After publication, the corresponding GitHub release and Git tag identify the authoritative public release version.
+
 Example:
 
 ```properties
@@ -49,8 +53,7 @@ Typical files include:
 - Release notes
 - Milestone/version references
 
-The README should reflect the new release version before the release tag is
-created.
+README and developer documentation should reflect the release's behavior and architecture before the release tag is created. They do not need to repeat the current version when `gradle.properties` already supplies it.
 
 ---
 
@@ -237,6 +240,10 @@ Verify:
 - Absolute Windows paths resolve correctly.
 - `pathlib.Path(...)` references resolve correctly.
 - Unsupported references (glob patterns, plain text, email addresses, version strings, etc.) do not become hyperlinks.
+- Command-line switches and escape/control fragments do not produce missing-resource warnings.
+- Quoted and ordinary path-like text inside Python docstrings is ignored.
+- Bracketed resources inside Python docstrings navigate when present and warn when missing.
+- Missing-resource Conservative, Balanced, and Aggressive policies behave as documented.
 - The regression test file behaves as expected.
 
 ---

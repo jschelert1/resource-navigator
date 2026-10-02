@@ -30,6 +30,7 @@ import java.nio.file.Path
  * ----------------
  *
  * • Standalone resource literal resolves to an existing file.
+ * • Existing bare recognized filename remains navigable independently of missing-resource policy.
  * • pathlib.Path composition resolves to an existing file.
  * • Issue #5 previous-keyword pseudo-scope resolves the file_path resource.
  * • Issue #5 forward-keyword pseudo-scope remains unresolved by RN.
@@ -37,9 +38,23 @@ import java.nio.file.Path
  * • Quoted PDF resource resolves only the quoted resource text.
  * • Quoted DOCX resource resolves only the quoted resource text.
  * • Quoted JPG resource resolves only the quoted resource text.
+ * • Issue #10 bracketed existing resource in a module docstring resolves to its target.
+ * • Issue #10 quoted existing resource in a module docstring exposes no RN reference.
  *
  * Revision History
  * ----------------
+ *
+ * v1.7.0 — 2026-10-02 (JS)
+ * • Added Issue #9 positive navigation coverage for an existing bare filename.
+ * • Proves missing-resource policy changes do not narrow successful navigation.
+ *
+ * v1.6.0 — 2026-10-02 (JS)
+ * • Corrected Issue #10 coverage to enforce RN's bracket-only resource syntax inside docstrings.
+ * • Added a negative control proving quoted existing docstring paths expose no RN reference.
+ *
+ * v1.5.0 — 2026-10-02 (JS)
+ * • Added initial GitHub Issue #10 module-docstring regression coverage.
+ * • Reused the real-filesystem navigation fixture so reference contribution and resolution are both tested.
  *
  * v1.4.0 — 2026-08-25 (JS)
  * • Added automated quoted-resource navigation tests for PDF, DOCX, and JPG.
@@ -92,6 +107,26 @@ class ResourceReferenceNavigationTest : BasePlatformTestCase() {
             "standalone.py",
             """
             resource = r"$resource"
+            """.trimIndent(),
+        )
+
+        assertCaretResolvesTo(target)
+    }
+
+    /**
+     * Issue #9: an existing bare filename with a recognized extension remains a valid
+     * navigation target even though Balanced missing-resource inspection ignores it when absent.
+     */
+    fun testIssue9ExistingBareFilenameResolves() {
+
+        val directory = Files.createTempDirectory("rn-navigation-issue9-bare-")
+        val target = createTarget(directory, "cache.json")
+
+        configureRealPythonFile(
+            directory,
+            "issue9_bare_filename.py",
+            """
+            FILE_NAME = "ca<caret>che.json"
             """.trimIndent(),
         )
 
@@ -216,6 +251,64 @@ class ResourceReferenceNavigationTest : BasePlatformTestCase() {
         )
 
         assertCaretResolvesTo(target)
+    }
+
+
+    /**
+     * Issue #10: brackets explicitly opt an existing absolute path inside a module
+     * docstring into RN resource handling, so the reference must resolve.
+     */
+    fun testIssue10BracketedExistingResourceInModuleDocstringResolves() {
+
+        val directory = Files.createTempDirectory("rn-navigation-issue10-bracketed-")
+        val target = createTarget(directory, "exists.json")
+        val resource = insertCaretInFileName(pythonRawPath(target), "exists.json")
+
+        val source = listOf(
+            "r\"\"\"",
+            "Example Output",
+            "",
+            "[$resource]",
+            "\"\"\"",
+        ).joinToString("\n")
+
+        configureRealPythonFile(
+            directory,
+            "issue10_bracketed_docstring.py",
+            source,
+        )
+
+        assertCaretResolvesTo(target)
+    }
+
+    /**
+     * Issue #10: quoted paths inside a Python module docstring are documentation,
+     * not explicit RN resources, even when the referenced filesystem target exists.
+     */
+    fun testIssue10QuotedExistingResourceInModuleDocstringIsIgnored() {
+
+        val directory = Files.createTempDirectory("rn-navigation-issue10-quoted-")
+        val target = createTarget(directory, "exists.json")
+        val resource = insertCaretInFileName(pythonRawPath(target), "exists.json")
+
+        val source = listOf(
+            "r\"\"\"",
+            "Example Output",
+            "",
+            "\"$resource\"",
+            "\"\"\"",
+        ).joinToString("\n")
+
+        configureRealPythonFile(
+            directory,
+            "issue10_quoted_docstring.py",
+            source,
+        )
+
+        assertNull(
+            referenceDiagnostic("Expected quoted module-docstring path to expose no Resource Navigator reference."),
+            findResourceReferenceAtCaret(),
+        )
     }
 
     /**

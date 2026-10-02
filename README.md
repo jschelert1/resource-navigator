@@ -6,11 +6,11 @@ The plugin integrates with **Go to Declaration (Ctrl+Click)**, **Quick Documenta
 
 ---
 
-# Version 2.0.1
+# Current Version
 
-Version 2.0.1 updates the Resource Navigator development platform to PyCharm 2026.2 and JDK 25 while retaining compatibility with PyCharm 2025.2 and later.
+The authoritative source-tree version of Resource Navigator is the `version` property in `gradle.properties`. Published release versions are identified by the corresponding GitHub release and Git tag.
 
-The release updates the IntelliJ Platform Gradle Plugin to 2.18.1, removes the upper IDE compatibility bound, and adds explicit Plugin Verifier coverage for PyCharm 2025.2.6.1 and PyCharm 2026.2.
+README and developer-documentation version numbers are retained only where they describe a historical milestone or the version in which a feature or architectural change was introduced; they are not intended to duplicate the current project version.
 
 # Version 2.0.0 Milestone
 
@@ -41,7 +41,8 @@ Resource paths can now be reconstructed from adjacent literals, constant f-strin
     * Open Resource
     * Reveal in File Manager
     * Copy Full Path
-* Missing-resource inspection.
+* Missing-resource inspection with Conservative, Balanced, and Aggressive detection policies.
+* Docstring-aware resource handling: bracketed citations are explicit resources; quoted and ordinary path-like documentation text is ignored.
 * Quick Documentation metadata for resources.
 * Configurable resource field names.
 * Configurable recognized resource extensions.
@@ -235,7 +236,9 @@ Run the complete automated test suite with:
 Current automated coverage includes:
 
 * Resource classification and utility behavior.
-* GitHub Issues #1–#8 regression coverage for false-positive and fail-closed inspection behavior.
+* GitHub Issues #1–#10 regression coverage for false-positive, fail-closed, docstring, and missing-resource behavior.
+* Issue #9 classification coverage for command-line switches, escape/control fragments, ambiguous filenames, API fragments, and strong filesystem paths.
+* Issue #10 navigation and inspection coverage for bracketed versus quoted resources inside Python docstrings.
 * Positive missing-resource diagnostics.
 * Real-filesystem-backed PSI/reference navigation.
 * Static `pathlib.Path` composition.
@@ -260,6 +263,10 @@ Resource candidates include:
 
 Compile-time resource expressions are evaluated before classification so that constants, f-strings, binary expressions, and other supported static forms can participate in the same resource-resolution pipeline.
 
+Navigation and missing-resource inspection intentionally use different confidence rules. Existing path-like resources may remain navigable even when an equivalent missing value is too ambiguous to justify a diagnostic.
+
+Inside Python docstrings, bracket syntax is the explicit Resource Navigator opt-in form: `[path]` may navigate or report a missing target, while quoted and ordinary path-like documentation text is ignored.
+
 Glob patterns and unsupported dynamic expressions are intentionally excluded to minimize false-positive navigation.
 
 ---
@@ -279,7 +286,8 @@ Current configuration options include:
 * Relative path resolution options.
 * URL navigation.
 * Broad path-like value recognition.
-* Missing-resource inspection behavior.
+* Missing-resource inspection enable/disable control.
+* Missing-resource detection policy: Conservative, Balanced, or Aggressive.
 
 ---
 
@@ -323,7 +331,7 @@ IDE / Browser / External Application / File Manager
 
 Primary components include:
 
-* **PythonResourceContext** — Determines supported Python syntax context and compile-time evaluation scope.
+* **PythonResourceContext** — Determines supported Python syntax context, docstring context, and compile-time evaluation scope.
 * **PythonStringResolver** — Reconstructs supported compile-time Python resource expressions.
 * **PythonResolvedString** — Preserves both source and resolved semantic string values.
 * **PythonConstantStringEvaluator** — Recursively evaluates supported compile-time Python expressions and constants.

@@ -1,6 +1,7 @@
 package com.jschelert.resourcenavigator.config
 
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -26,6 +27,7 @@ import javax.swing.JPanel
  * • Synchronizes UI state with ResourceNavigatorSettings.
  * • Persists user changes through the PersistentStateComponent.
  * • Normalizes configured resource extensions before saving.
+ * • Exposes the missing-resource detection confidence policy.
  *
  * Responsibilities
  * ----------------
@@ -34,6 +36,7 @@ import javax.swing.JPanel
  * • Apply user configuration changes.
  * • Restore persisted configuration.
  * • Dispose UI resources when no longer needed.
+ * • Configure conservative, balanced, or aggressive missing-resource detection.
  *
  * Dependencies
  * ------------
@@ -46,6 +49,12 @@ import javax.swing.JPanel
  * --------
  * • ResourceNavigatorSettings
  * • ResourceExtensionRegistry
+ *
+ * Revision History
+ * ----------------
+ * v1.1.0 — 2026-10-02 (JS)
+ * • Added the missing-resource detection policy selector.
+ * • Wired the policy through modified-state detection, apply(), and reset().
  */
 class ResourceNavigatorConfigurable : Configurable {
 
@@ -94,6 +103,9 @@ class ResourceNavigatorConfigurable : Configurable {
             "Warn about missing resources"
         )
 
+    private val missingResourcePolicy =
+        ComboBox(ResourceNavigatorSettings.MissingResourcePolicy.entries.toTypedArray())
+
     /**
      * Return the Settings page display name.
      */
@@ -136,6 +148,11 @@ class ResourceNavigatorConfigurable : Configurable {
                 .addComponent(urls)
                 .addComponent(warnings)
 
+                .addLabeledComponent(
+                    JBLabel("Missing-resource detection:"),
+                    missingResourcePolicy,
+                )
+
                 .addComponentFillVertically(
                     JPanel(),
                     0,
@@ -174,7 +191,8 @@ class ResourceNavigatorConfigurable : Configurable {
                 projectRoot.isSelected != s.resolveAgainstProjectRoot ||
                 anyExisting.isSelected != s.acceptAnyPathLikeValue ||
                 urls.isSelected != s.enableUrlNavigation ||
-                warnings.isSelected != s.warnOnMissingResources
+                warnings.isSelected != s.warnOnMissingResources ||
+                missingResourcePolicy.selectedItem != s.missingResourcePolicy
     }
 
     /**
@@ -213,6 +231,9 @@ class ResourceNavigatorConfigurable : Configurable {
 
         s.warnOnMissingResources =
             warnings.isSelected
+
+        s.missingResourcePolicy =
+            missingResourcePolicy.selectedItem as ResourceNavigatorSettings.MissingResourcePolicy
     }
 
     /**
@@ -251,6 +272,9 @@ class ResourceNavigatorConfigurable : Configurable {
 
         warnings.isSelected =
             s.warnOnMissingResources
+
+        missingResourcePolicy.selectedItem =
+            s.missingResourcePolicy
     }
 
     /**
@@ -279,8 +303,8 @@ class ResourceNavigatorConfigurable : Configurable {
         value: String,
     ): List<String> =
 
-        //
-        // Normalize and deduplicate the extension list.
+    //
+    // Normalize and deduplicate the extension list.
         //
         value.lines()
             .map(ResourceExtensionRegistry::normalize)

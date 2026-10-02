@@ -32,7 +32,7 @@ import java.nio.file.Paths
  * • Resolves relative paths against the project root.
  * • Expands '~' to the current user's home directory.
  * • Supports Windows drive-letter and UNC absolute paths.
- * • Locates existing resources through IntelliJ LocalFileSystem.
+ * • Locates existing resources through IntelliJ LocalFileSystem without synchronous VFS refresh.
  * • Produces ResourceTarget objects for both existing and missing local resources.
  * • Preserves source and resolved string representations independently.
  *
@@ -181,6 +181,10 @@ import java.nio.file.Paths
  *
  * Revision History
  * ----------------
+ * v2.1.0 — 2026-10-02 (JS)
+ * • Replaced synchronous refresh-and-find VFS lookup with read-lock-safe non-refreshing lookup.
+ * • Preserved existing/missing ResourceTarget behavior and candidate resolution order.
+ *
  * v2.0.0 — 2026-07-23 (JS)
  * • Added sourceValue and resolvedValue separation through PythonResolvedString.
  * • Added resolution of reconstructed compile-time Python string values while
@@ -307,7 +311,7 @@ object ResourceResolver {
      * • Expands a leading '~' to the current user's home directory.
      * • Generates candidate paths according to the configured resolution rules.
      * • Searches candidate paths in deterministic order.
-     * • Uses IntelliJ LocalFileSystem to locate existing resources.
+     * • Uses IntelliJ LocalFileSystem to locate existing resources without synchronous VFS refresh.
      * • Returns immediately when the first existing resource is found.
      * • Returns a missing ResourceTarget when no candidate exists.
      * • Preserves sourceValue and resolvedValue independently in the target.
@@ -358,10 +362,11 @@ object ResourceResolver {
         candidatePaths.forEach { path ->
 
             //
-            // Refresh the filesystem state and locate the candidate VirtualFile.
+            // Locate the candidate in IntelliJ's current VFS state without performing
+            // a synchronous refresh because resolution may execute under a read lock.
             //
             val virtualFile =
-                localFileSystem.refreshAndFindFileByNioFile(path)
+                localFileSystem.findFileByNioFile(path)
 
             //
             // Construct an existing-resource target when the candidate resolves.
@@ -606,8 +611,8 @@ object ResourceResolver {
         value: String,
     ): Boolean =
 
-        //
-        // Detect drive-letter absolute paths or UNC network paths.
+    //
+    // Detect drive-letter absolute paths or UNC network paths.
         //
         Regex("^[A-Za-z]:[\\\\/].+").matches(value) ||
                 value.startsWith("\\\\")
@@ -790,5 +795,4 @@ object ResourceResolver {
         println("looksLikePath = $looksLikePath")
         println("shouldHandle = $shouldHandle")
     }
-
 }

@@ -22,6 +22,8 @@ import com.jschelert.resourcenavigator.util.ResourceExtensionRegistry
  * • Provides application-wide access to Resource Navigator settings.
  * • Normalizes configured resource extensions before runtime use.
  * • Initializes the default extension list from ResourceExtensionRegistry.
+ * • Persists the missing-resource detection policy independently from navigation
+ *   classification settings.
  *
  * Responsibilities
  * ----------------
@@ -29,6 +31,16 @@ import com.jschelert.resourcenavigator.util.ResourceExtensionRegistry
  * • Provide normalized runtime configuration.
  * • Supply application-wide singleton access.
  * • Initialize default configuration values.
+ * • Configure how conservatively missing-resource intent is inferred.
+ *
+ * Missing-Resource Policy
+ * -----------------------
+ * • CONSERVATIVE — warn only for resources explicitly opted into validation by
+ *   higher-level syntax such as bracketed resource references.
+ * • BALANCED — additionally warn for strongly path-structured resource candidates
+ *   while ignoring ambiguous filename-like values.
+ * • AGGRESSIVE — allow missing-resource inspection for all ordinary resource
+ *   candidates accepted by ResourceClassifier, subject to its correctness guards.
  *
  * Dependencies
  * ------------
@@ -41,6 +53,12 @@ import com.jschelert.resourcenavigator.util.ResourceExtensionRegistry
  * --------
  * • ResourceNavigatorConfigurable
  * • ResourceExtensionRegistry
+ *
+ * Revision History
+ * ----------------
+ * v1.1.0 — 2026-10-02 (JS)
+ * • Added the persisted MissingResourcePolicy setting.
+ * • Defaulted missing-resource detection to BALANCED.
  */
 @State(
     name = "ResourceNavigatorSettings",
@@ -50,6 +68,15 @@ import com.jschelert.resourcenavigator.util.ResourceExtensionRegistry
 )
 class ResourceNavigatorSettings :
     PersistentStateComponent<ResourceNavigatorSettings.State> {
+
+    /**
+     * Missing-resource inspection confidence policy.
+     */
+    enum class MissingResourcePolicy {
+        CONSERVATIVE,
+        BALANCED,
+        AGGRESSIVE,
+    }
 
     /**
      * Persistent configuration state.
@@ -68,6 +95,9 @@ class ResourceNavigatorSettings :
         var enableUrlNavigation: Boolean = true,
 
         var warnOnMissingResources: Boolean = true,
+
+        var missingResourcePolicy: MissingResourcePolicy =
+            MissingResourcePolicy.BALANCED,
     )
 
     private var state =

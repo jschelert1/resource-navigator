@@ -31,6 +31,9 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 //   v2.1.0 — 2026-08-25
 //   - Reintroduced IntelliJ Platform fixture-test support for automated RN regressions.
 //   - Added the Platform test framework while retaining kotlin.test unit tests.
+//
+//   v2.1.1 — 2026-10-02
+//   - Excluded *_bak_* Kotlin backup files from all Kotlin compilation tasks.
 // ============================================================================
 
 plugins {
@@ -44,6 +47,11 @@ version = providers.gradleProperty("version").get()
 // Resource Navigator targets Java 25 for PyCharm 2026.2.
 kotlin {
     jvmToolchain(25)
+}
+
+// Keep local *_bak_* Kotlin backup files out of both production and test compilation.
+kotlin.sourceSets.configureEach {
+    kotlin.exclude("**/*_bak_*")
 }
 
 repositories {

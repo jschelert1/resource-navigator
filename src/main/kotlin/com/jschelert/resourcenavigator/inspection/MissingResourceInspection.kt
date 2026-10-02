@@ -6,6 +6,8 @@ import com.intellij.psi.PsiElementVisitor
 import com.jetbrains.python.psi.PyElementVisitor
 import com.jetbrains.python.psi.PyStringLiteralExpression
 import com.jschelert.resourcenavigator.config.ResourceNavigatorSettings
+import com.jschelert.resourcenavigator.navigation.ResourceCitation
+import com.jschelert.resourcenavigator.navigation.ResourceCitationParser
 import com.jschelert.resourcenavigator.util.PythonResourceContext
 import com.jschelert.resourcenavigator.util.PythonStringResolver
 import com.jschelert.resourcenavigator.util.ResourceKind
@@ -95,6 +97,31 @@ class MissingResourceInspection : LocalInspectionTool() {
             ) {
 
                 //
+                // Bracketed citations are explicit Resource Navigator syntax and take
+                // precedence in every Python string context, including docstrings.
+                //
+                val citations =
+                    ResourceCitationParser.parse(node)
+
+                if (citations.isNotEmpty()) {
+                    inspectCitationResources(
+                        holder = holder,
+                        node = node,
+                        citations = citations,
+                    )
+
+                    return
+                }
+
+                //
+                // Docstrings require explicit bracket syntax. Quoted and ordinary
+                // path-like text remains documentation and must not produce warnings.
+                //
+                if (PythonResourceContext.isDocumentationString(node)) {
+                    return
+                }
+
+                //
                 // Give explicitly quoted resources precedence over whole-string
                 // inspection so surrounding descriptive prose is never treated as
                 // part of the filesystem path.
@@ -169,6 +196,56 @@ class MissingResourceInspection : LocalInspectionTool() {
         }
     }
     /**
+     * Inspect explicit bracketed resource citations.
+     *
+     * Bracket syntax opts into Resource Navigator processing even inside Python
+     * docstrings. Existing resources and URLs are ignored; missing local resources
+     * are reported against the citation range.
+     */
+    private fun inspectCitationResources(
+        holder: ProblemsHolder,
+        node: PyStringLiteralExpression,
+        citations: List<ResourceCitation>,
+    ) {
+
+        citations.forEach { citation ->
+
+            val value =
+                citation.text.trim()
+
+            if (
+                value.isEmpty() ||
+                ResourceClassifier.isUrl(value) ||
+                !ResourceClassifier.shouldHandle(
+                    node,
+                    value,
+                )
+            ) {
+                return@forEach
+            }
+
+            val target =
+                ResourceResolver.resolveLocal(
+                    project = node.project,
+                    containingFile = node.containingFile,
+                    sourceValue = value,
+                )
+
+            if (target.exists) {
+                return@forEach
+            }
+
+            holder.registerProblem(
+                node,
+                citation.range,
+                "Referenced resource does not exist: ${
+                    target.resolvedPath ?: target.sourceValue
+                }",
+            )
+        }
+    }
+
+    /**
      * Inspect explicitly quoted resources embedded in descriptive Python text.
      *
      * Existing local resources and URLs are ignored. Missing local resources are
@@ -219,5 +296,4 @@ class MissingResourceInspection : LocalInspectionTool() {
             }
         }
     }
-
 }
