@@ -40,6 +40,7 @@ import java.nio.file.Path
  * • Quoted JPG resource resolves only the quoted resource text.
  * • Issue #10 bracketed existing resource in a module docstring resolves to its target.
  * • Issue #10 quoted existing resource in a module docstring exposes no RN reference.
+ * • Issue #11 regex character classes are ignored while ordinary bracketed resources navigate.
  *
  * Revision History
  * ----------------
@@ -309,6 +310,37 @@ class ResourceReferenceNavigationTest : BasePlatformTestCase() {
             referenceDiagnostic("Expected quoted module-docstring path to expose no Resource Navigator reference."),
             findResourceReferenceAtCaret(),
         )
+    }
+
+
+    /** Issue #11: regex classes must not generate Resource Navigator references. */
+    fun testIssue11RegexCharacterClassDoesNotNavigate() {
+        val directory = Files.createTempDirectory("rn-navigation-issue11-regex-")
+        configureRealPythonFile(
+            directory,
+            "issue11_regex.py",
+            """
+            import re
+            pattern = re.compile(r"\b\d{1,2}[<caret>/-]\d{1,2}\b")
+            """.trimIndent(),
+        )
+        assertNull(
+            referenceDiagnostic("Regex character class must not expose a Resource Navigator reference."),
+            findResourceReferenceAtCaret(),
+        )
+    }
+
+    /** Issue #11: explicit bracketed resources remain navigable outside regex patterns. */
+    fun testIssue11OrdinaryBracketedResourceStillResolves() {
+        val directory = Files.createTempDirectory("rn-navigation-issue11-resource-")
+        val target = createTarget(directory, "exists.json")
+        val resource = insertCaretInFileName(pythonRawPath(target), "exists.json")
+        configureRealPythonFile(
+            directory,
+            "issue11_resource.py",
+            "resource = r\"[$resource]\"",
+        )
+        assertCaretResolvesTo(target)
     }
 
     /**

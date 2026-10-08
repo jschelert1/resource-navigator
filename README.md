@@ -48,6 +48,7 @@ Resource paths can now be reconstructed from adjacent literals, constant f-strin
 * Configurable recognized resource extensions.
 * Configurable broad path-like value recognition.
 * Glob-pattern detection to prevent unsupported wildcard references from becoming navigation links.
+* Regex-pattern context detection to prevent Python regular-expression character classes from becoming resource references or missing-resource warnings.
 * Bracketed resource citations within Python string literals.
 * Expanded and reorganized regression tests for supported and unsupported resource references.
 * IntelliJ Platform automated regression testing for inspection, navigation, and missing-resource behavior.
@@ -236,9 +237,10 @@ Run the complete automated test suite with:
 Current automated coverage includes:
 
 * Resource classification and utility behavior.
-* GitHub Issues #1–#10 regression coverage for false-positive, fail-closed, docstring, and missing-resource behavior.
+* GitHub Issues #1–#11 regression coverage for false-positive, fail-closed, docstring, regex-pattern, and missing-resource behavior.
 * Issue #9 classification coverage for command-line switches, escape/control fragments, ambiguous filenames, API fragments, and strong filesystem paths.
 * Issue #10 navigation and inspection coverage for bracketed versus quoted resources inside Python docstrings.
+* Issue #11 inspection and navigation regression coverage for regex character classes in supported `re` pattern arguments, with positive controls for ordinary bracketed resources.
 * Positive missing-resource diagnostics.
 * Real-filesystem-backed PSI/reference navigation.
 * Static `pathlib.Path` composition.
@@ -268,6 +270,8 @@ Navigation and missing-resource inspection intentionally use different confidenc
 Inside Python docstrings, bracket syntax is the explicit Resource Navigator opt-in form: `[path]` may navigate or report a missing target, while quoted and ordinary path-like documentation text is ignored.
 
 Glob patterns and unsupported dynamic expressions are intentionally excluded to minimize false-positive navigation.
+
+Regex character classes such as `[a-z]`, `[0-9]`, and `[/-]` within recognized Python `re` pattern arguments are regular-expression syntax, not bracketed filesystem citations. They are excluded from Resource Navigator hyperlinks and missing-resource diagnostics. Bracketed resource references outside regex-pattern contexts retain their normal behavior.
 
 ---
 

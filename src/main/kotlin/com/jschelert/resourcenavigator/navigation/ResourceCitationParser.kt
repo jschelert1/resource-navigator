@@ -3,6 +3,7 @@ package com.jschelert.resourcenavigator.navigation
 import com.intellij.openapi.util.TextRange
 import com.jetbrains.python.psi.PyStringLiteralExpression
 import com.jschelert.resourcenavigator.util.PythonStringUtil
+import com.jschelert.resourcenavigator.util.PythonRegexContext
 
 /**
  * =================================================================================================
@@ -120,6 +121,10 @@ object ResourceCitationParser {
         //
         // Obtain the decoded content of the Python string literal.
         //
+        // Regex character classes are syntax, not bracketed RN citations.
+        if (PythonRegexContext.isRegexPattern(literal))
+            return emptyList()
+
         val content =
             PythonStringUtil.contentText(literal)
 

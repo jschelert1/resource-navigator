@@ -23,6 +23,7 @@ import com.jschelert.resourcenavigator.inspection.MissingResourceInspection
  * • #8    — Simple variable references in descriptive f-string prose must be ignored.
  * • #9    — CLI switches, escape fragments, and documentation/example paths must not warn.
  * • #10   — Quoted paths in Python docstrings are documentation and must not warn.
+ * • #11   — Regex character classes must not become bracketed resource citations.
  *
  * Issue #8 is split across the Python corpus and this Kotlin fixture. Its no-warning
  * behavior remains in the shared .py test data, while its positive missing-resource
@@ -182,6 +183,41 @@ class MissingResourceInspectionTest : BasePlatformTestCase() {
             "Referenced resource does not exist: $missingPath",
             warnings.single().description,
         )
+    }
+
+
+    /** Issue #11: regex character classes must not be interpreted as bracketed resources. */
+    fun testIssue11RegexCharacterClassesProduceNoWarning() {
+        myFixture.configureByText(
+            "issue11_regex_classes.py",
+            """
+            import re
+
+            date = re.compile(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b")
+            letters = re.search(r"[a-z][0-9][._-][^/\\]", "abc")
+            pieces = re.findall(
+                r"[/-]"
+                r"[a-z]"
+                r"[0-9]",
+                "test",
+            )
+            result = re.sub(r"[._-]", "_", "a-b")
+            """.trimIndent(),
+        )
+        assertNoMissingWarnings()
+    }
+
+    /** Issue #11: non-regex bracketed citations must retain missing-path diagnostics. */
+    fun testIssue11OrdinaryBracketedMissingPathStillWarns() {
+        val missingPath = "C:\\RNFixture\\issue11_missing.json"
+        myFixture.configureByText(
+            "issue11_bracketed_missing.py",
+            "resource = r\"[$missingPath]\"",
+        )
+        val warnings = myFixture.doHighlighting()
+            .filter { it.description?.startsWith("Referenced resource does not exist:") == true }
+        assertEquals(1, warnings.size)
+        assertEquals("Referenced resource does not exist: $missingPath", warnings.single().description)
     }
 
     private fun assertNoMissingWarnings() {
