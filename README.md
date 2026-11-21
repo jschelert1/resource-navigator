@@ -269,6 +269,32 @@ Navigation and missing-resource inspection intentionally use different confidenc
 
 Inside Python docstrings, bracket syntax is the explicit Resource Navigator opt-in form: `[path]` may navigate or report a missing target, while quoted and ordinary path-like documentation text is ignored.
 
+## Quoted Example Paths in HTML Help Text
+
+Resource Navigator distinguishes **Python docstrings** from other Python string
+literals. Inside docstrings, explicit bracketed citations such as `[path]` opt
+into resource recognition; ordinary quoted paths are ignored. In other Python
+strings, including strings containing HTML help content, double-quoted path
+examples can be recognized as resources and may produce missing-resource
+warnings when the examples are intentionally fictitious.
+
+When authoring **HTML help content**, encode the quotation marks around example
+paths as `&quot;`. The HTML renderer displays ordinary double quotes, while the
+Python source no longer contains the double-quoted path pattern that triggers
+RN's quoted-resource inspection. For example:
+
+```python
+help_html = r'''<pre>pycharm.bat &quot;C:\\path\\to\\project&quot; --line 1631 &quot;C:\\path\\to\\chapter.py&quot;</pre>'''
+```
+
+This preserves valid Windows command-line quoting in the rendered help text.
+Changing only the outer Python string delimiters does not solve the issue,
+and substituting single quotes inside the command would not preserve Windows
+argument quoting. **Use `&quot;` only in HTML content**; it is not a substitute
+for quotation marks in plain text or executable filesystem paths. This is an
+authoring convention, not a change to RN's resource-detection rules.
+
+
 Glob patterns and unsupported dynamic expressions are intentionally excluded to minimize false-positive navigation.
 
 Regex character classes such as `[a-z]`, `[0-9]`, and `[/-]` within recognized Python `re` pattern arguments are regular-expression syntax, not bracketed filesystem citations. They are excluded from Resource Navigator hyperlinks and missing-resource diagnostics. Bracketed resource references outside regex-pattern contexts retain their normal behavior.
