@@ -18,6 +18,8 @@ import java.nio.file.Path
  * • Standalone missing PDF literal produces one RN warning.
  * • Quoted missing PDF in descriptive prose produces one RN warning on the quoted path only.
  * • Static pathlib.Path composition to a missing PDF produces one RN warning.
+ * • Nested pathlib expressions emit one warning, not one per literal.
+ * • Externally created PDF/MHTML exports do not trigger stale-VFS warnings.
  *
  * Test Strategy
  * -------------
@@ -29,6 +31,8 @@ import java.nio.file.Path
  *
  * Revision History
  * ----------------
+ * v1.0.1 — 2026-11-23 (JS)
+ * • Add nested-path deduplication and external-export existence regressions.
  *
  * v1.0.0 — 2026-08-25 (JS)
  * • Added dedicated positive missing-resource inspection coverage.
@@ -87,6 +91,49 @@ class MissingResourcePositiveDiagnosticsTest : BasePlatformTestCase() {
         )
 
         assertSingleMissingWarning(missing)
+    }
+
+    fun testNestedPathExpressionReportsOneMissingResource() {
+        val directory = Files.createTempDirectory("rn-missing-nested-")
+        val folder = directory.resolve("chat")
+        Files.createDirectory(folder)
+        val missing = folder.resolve("link.pdf")
+
+        myFixture.configureByText(
+            "missing_nested.py",
+            """
+            from pathlib import Path
+
+            CHAT_EXPORT_PATH = Path(r"${pythonRawPath(directory)}")
+            pdf_path = CHAT_EXPORT_PATH / "chat" / "link.pdf"
+            """.trimIndent(),
+        )
+
+        assertSingleMissingWarning(missing)
+    }
+
+    fun testExternallyCreatedChatExportsDoNotWarnWithStaleVfs() {
+        val directory = Files.createTempDirectory("rn-existing-chat-")
+        val folder = directory.resolve("chat")
+        Files.createDirectory(folder)
+        Files.writeString(folder.resolve("link.pdf"), "PDF placeholder for inspection")
+        Files.writeString(folder.resolve("link.mhtml"), "MHTML placeholder for inspection")
+
+        myFixture.configureByText(
+            "existing_chat_exports.py",
+            """
+            from pathlib import Path
+
+            CHAT_EXPORT_PATH = Path(r"${pythonRawPath(directory)}")
+            pdf_path = CHAT_EXPORT_PATH / "chat" / "link.pdf"
+            mhtml_path = CHAT_EXPORT_PATH / "chat" / "link.mhtml"
+            """.trimIndent(),
+        )
+
+        val warnings = myFixture.doHighlighting().filter {
+            it.description?.startsWith("Referenced resource does not exist:") == true
+        }
+        assertTrue("Existing resources must not be reported missing: $warnings", warnings.isEmpty())
     }
 
     private fun assertSingleMissingWarning(expected: Path) {
