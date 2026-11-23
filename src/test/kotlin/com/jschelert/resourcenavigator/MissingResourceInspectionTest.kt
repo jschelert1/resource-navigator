@@ -220,6 +220,33 @@ class MissingResourceInspectionTest : BasePlatformTestCase() {
         assertEquals("Referenced resource does not exist: $missingPath", warnings.single().description)
     }
 
+    /** Issue #14: Android device paths must not be interpreted as host-local files. */
+    fun testIssue14AndroidStoragePathsOnWindowsDoNotWarn() {
+        if (!System.getProperty("os.name", "").startsWith("Windows", ignoreCase = true))
+            return
+        myFixture.configureByText(
+            "issue14_android_storage.py",
+            """
+            if not source.startswith('/') or source in ('/', '/storage', '/storage/emulated/0'):
+                pass
+            device_path = '/sdcard/DCIM'
+            other_device_path = '/mnt/sdcard/DCIM'
+            """.trimIndent(),
+        )
+        assertNoMissingWarnings()
+    }
+
+    /** Issue #13: quoted URL fragments in docstrings are descriptive prose. */
+    fun testIssue13UrlFragmentsInDocstringDoNotWarn() {
+        val source = listOf(
+            "r\"\"\"",
+            "1. utils_url.py — replace local \"chatgpt.com\" and \"/c/\" with CHATGPT_HOST and CHATGPT_CONVERSATION_PATH_PREFIX.",
+            "\"\"\"",
+        ).joinToString("\n")
+        myFixture.configureByText("issue13_docstring_url_fragments.py", source)
+        assertNoMissingWarnings()
+    }
+
     private fun assertNoMissingWarnings() {
 
         val warnings = myFixture.doHighlighting()
