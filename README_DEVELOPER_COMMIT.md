@@ -135,6 +135,43 @@ commit that omits release documentation or fixes.
 
 ---
 
+# Custom PyCharm Plugin Update Repository
+
+Resource Navigator distributes updates through a JetBrains-compatible custom
+plugin repository hosted by GitHub Pages, independently of JetBrains Marketplace.
+
+Repository descriptor source:
+
+```text
+docs/updatePlugins.xml
+```
+
+Configure GitHub Pages once under **Settings -> Pages**, selecting **Deploy from
+a branch**, branch `main`, folder `/docs`. Once Pages is active, the descriptor
+should be accessible at:
+
+```text
+https://jschelert1.github.io/resource-navigator/updatePlugins.xml
+```
+
+In PyCharm, open **Settings -> Plugins -> gear -> Manage Plugin
+Repositories**, remove any entry pointing to the GitHub repository homepage,
+and add the descriptor URL above. PyCharm uses this feed to discover available
+versions; GitHub Releases provides the plugin ZIP.
+
+For each new release, after the release ZIP is published, update
+`docs/updatePlugins.xml` with the new version and the exact release-asset URL.
+Commit that descriptor update to `main` so GitHub Pages publishes it. Keep
+the plugin ID consistent with `META-INF/plugin.xml`, and ensure the release
+asset is publicly downloadable. Do not edit or move an already published
+release tag to update this feed.
+
+This repository descriptor is distribution metadata, not part of the tagged
+plugin source. It may be updated after the release without retagging.
+The GitHub Pages site must be enabled separately in repository settings.
+
+---
+
 # 7. Create GitHub Release
 
 On GitHub:
