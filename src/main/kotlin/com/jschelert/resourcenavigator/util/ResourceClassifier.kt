@@ -463,7 +463,7 @@ object ResourceClassifier {
      * may concatenate to "Label: C:\\folder\\file.xlsm".
      */
     private fun isDescriptiveWindowsPath(value: String): Boolean =
-        Regex("""^[^\\r\\n]+:\\s+[A-Za-z]:[\\\\/]""").containsMatchIn(value)
+        Regex("""^[^\r\n]+:\s+[A-Za-z]:[\\/]""").containsMatchIn(value)
 
     /**
      * Return true when a value has enough filesystem structure for Balanced
