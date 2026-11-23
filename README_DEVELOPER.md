@@ -1031,3 +1031,207 @@ Planned areas of continued development include:
 This document provides the architectural map and major execution paths for Resource Navigator.
 
 Detailed implementation notes, revision history, and design rationale remain close to the implementation within individual source files and class headers. This keeps the developer guide focused on subsystem relationships and execution flow while allowing individual implementations to evolve independently.
+
+---
+
+# Public Distribution, GitHub Pages, and Google Search Setup
+
+This section documents the reusable deployment procedure established for
+Resource Navigator in November 2026. It is applicable to another public
+IntelliJ/PyCharm plugin repository by replacing the owner, repository,
+plugin ID, version, and release ZIP filename.
+
+## 1. Publish a public GitHub repository
+
+1. Make the repository public under **Settings -> General -> Danger Zone ->
+   Change repository visibility**, if it is intended to be publicly accessible.
+2. Publish a meaningful `README.md` describing features, installation,
+   compatibility, source, and release links.
+3. Publish a versioned release ZIP under **Releases**. The release asset must
+   be downloadable without authentication.
+4. Optionally fill out the GitHub repository description, website URL,
+   and topics, and the account profile bio. These help visitors identify the
+   project, but do not guarantee Google indexing.
+
+A GitHub user profile or repository being publicly reachable does not
+guarantee that Google has indexed it. Search Console verification of the
+GitHub Pages website also does **not** verify ownership of `github.com`.
+
+## 2. Host the custom plugin repository with GitHub Pages
+
+The repository uses **Settings -> Pages -> Build and deployment ->
+Deploy from a branch**, with branch `main` and folder `/docs`.
+GitHub Pages serves files committed in `docs/` at:
+
+```text
+https://jschelert1.github.io/resource-navigator/
+```
+
+For another repository, substitute:
+
+```text
+https://<github-user>.github.io/<repository>/
+```
+
+Place an IntelliJ-compatible custom plugin descriptor at
+`docs/updatePlugins.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<plugins>
+  <plugin id="YOUR_PLUGIN_ID"
+          url="https://github.com/OWNER/REPO/releases/download/vX.Y.Z/PLUGIN-X.Y.Z.zip"
+          version="X.Y.Z">
+    <name>Your Plugin Name</name>
+    <description>Brief plugin description.</description>
+    <vendor>Your Name</vendor>
+    <idea-version since-build="252"/>
+  </plugin>
+</plugins>
+```
+
+Use the **actual** plugin ID from `src/main/resources/META-INF/plugin.xml`,
+the actual published release ZIP URL, and an IDE compatibility value
+appropriate for the plugin. Do not copy the sample values blindly.
+
+After Pages deploys, open the descriptor URL in a browser and confirm it
+serves XML rather than a 404 page or GitHub HTML. The XML file is a
+**plugin repository feed**; it is not itself the ZIP and is not a
+Google sitemap.
+
+## 3. Enable automatic plugin update discovery in PyCharm
+
+1. Open **Settings -> Plugins -> gear -> Manage Plugin Repositories**.
+2. Add the **full XML descriptor URL**, not the GitHub repository URL
+   or the GitHub Pages homepage URL.
+3. Open the installed plugin's details and change **Updates from**
+   from JetBrains Marketplace to the new custom repository if needed.
+4. Confirm that PyCharm offers an update when the feed advertises a
+   newer compatible version than the installed plugin.
+5. Use **Update**, restart the IDE, and verify the installed version.
+
+This extra **Updates from** selection mattered during the Resource Navigator
+setup: merely adding the custom repository did not initially cause its
+installed plugin to offer the new release. Update availability also depends
+on IDE compatibility and a working release ZIP link.
+
+For **every subsequent release**, publish the new GitHub Release and ZIP
+first, then change the version and ZIP URL in `docs/updatePlugins.xml`
+on `main`. Wait for GitHub Pages deployment and verify the public XML
+and ZIP URL. This is a post-release metadata commit and must **not**
+move or recreate the release tag. See `README_DEVELOPER_COMMIT.md`.
+
+## 4. Create a public project homepage
+
+The Resource Navigator Pages site contains:
+
+```text
+docs/index.html          Public landing page, title, description, canonical URL
+docs/sitemap.xml         Google-compatible sitemap listing the homepage
+docs/robots.txt          Crawler access rules and sitemap location
+docs/updatePlugins.xml   JetBrains/PyCharm custom update feed
+docs/google*.html        Google Search Console verification file, if supplied
+```
+
+A reusable homepage should explain what the project does, describe its
+features, link to its source and releases, and include installation
+instructions. Give it a descriptive HTML `<title>`, a meta description,
+a canonical URL, and mobile-friendly markup.
+
+GitHub Pages publishes `docs/index.html` as the repository Pages root.
+Use an **absolute** canonical URL matching that public root. A minimal
+sitemap looks like:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://OWNER.github.io/REPO/</loc></url>
+</urlset>
+```
+
+A minimal `docs/robots.txt` is:
+
+```text
+User-agent: *
+Allow: /
+
+Sitemap: https://OWNER.github.io/REPO/sitemap.xml
+```
+
+The sitemap should list canonical, indexable website pages. It does not
+need to list the plugin ZIP or `updatePlugins.xml`. For another project,
+replace the owner/repository placeholders consistently.
+
+## 5. Verify the Pages site in Google Search Console
+
+1. Open `https://search.google.com/search-console/`.
+2. Select **Add property -> URL prefix**. For Resource Navigator, the
+   property is exactly:
+
+   ```text
+   https://jschelert1.github.io/resource-navigator/
+   ```
+
+3. Choose the **HTML file** ownership verification method and download
+   the **exact file Google provides**. Its name and content are
+   account/property-specific; do not reuse another site's token.
+4. Commit that unmodified HTML file into `docs/` on the Pages branch.
+   It must be publicly accessible at:
+
+   ```text
+   https://OWNER.github.io/REPO/googleXXXXXXXX.html
+   ```
+
+5. Wait for GitHub Pages deployment. Open the exact verification URL in
+   a private browser session and check that the file is publicly reachable.
+6. Return to Search Console and click **Verify**.
+
+During the original setup, an initial verification attempt returned
+**Could not find your site**. Retrying after the site/verification file
+became publicly available succeeded. Check the URL prefix, exact
+filename/content, Pages deployment status, and HTTP availability before
+retrying. Do **not** delete the verification file after success;
+Google may periodically recheck ownership.
+
+The **HTML tag** verification method is another option, but it requires
+placing the exact Search Console meta tag in the site's HTML. GitHub
+Pages does not grant control of the `github.io` parent domain's DNS,
+so domain-property verification is not the appropriate default for
+a repository Pages URL.
+
+## 6. Submit the sitemap and request indexing
+
+After ownership verification:
+
+1. Click **Go to property** in Search Console.
+2. Open **Indexing -> Sitemaps**.
+3. Under **Add a new sitemap**, enter `sitemap.xml` and click **Submit**.
+4. Use **URL inspection** on the exact homepage URL.
+5. When Google can access the page, choose **Request indexing**.
+6. Check **Pages** and **Performance** over subsequent days/weeks for
+   crawling, indexing, and search-impression information.
+
+A newly created property may initially show **Processing data**.
+Successful ownership verification, successful sitemap submission,
+a crawl, indexing, and ranking are **distinct events**. Search Console
+does not guarantee that a page will appear in Google results or
+determine when it will rank.
+
+Google Search Console cannot directly request indexing of the GitHub
+profile or repository pages at `github.com/OWNER`, because the user
+does not control that host. The verified Pages site can link prominently
+to the GitHub repository and releases, improving discovery.
+
+## 7. Maintenance checklist for another public repository
+
+- [ ] Public repository and downloadable GitHub Release ZIP
+- [ ] Correct plugin ID, version, ZIP URL, and IDE compatibility in update feed
+- [ ] GitHub Pages configured to deploy `main` / `docs`
+- [ ] Public `updatePlugins.xml` loads and PyCharm detects the custom feed
+- [ ] Installed plugin's **Updates from** source points to the custom feed
+- [ ] Public `index.html`, `sitemap.xml`, and `robots.txt` load
+- [ ] Search Console URL-prefix property uses the exact Pages site root
+- [ ] Google-issued verification file remains accessible under `docs/`
+- [ ] Sitemap submitted and homepage inspected/requested for indexing
+- [ ] Each future release updates the XML feed **after** the ZIP is published
+
