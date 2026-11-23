@@ -339,3 +339,49 @@ Install/update plugin and smoke test
 - [ ] GitHub Pages update feed verified and PyCharm update discovery checked
 - [ ] Release ZIP and plugin version verified
 - [ ] New plugin installed and final smoke tests passed
+
+---
+
+# One-Time Public Repository Setup (Not Repeated for Every Release)
+
+For a **new public plugin repository**, complete the GitHub Pages,
+automatic-update, website, and Google Search Console setup described in
+`README_DEVELOPER.md`, section **Public Distribution, GitHub Pages, and
+Google Search Setup**.
+
+The one-time setup consists of:
+
+1. Make the intended repository public and publish an installable release ZIP.
+2. Configure **Settings -> Pages -> Deploy from a branch -> main -> /docs**.
+3. Add `docs/updatePlugins.xml` with the exact plugin ID, release ZIP URL,
+   version, and IDE compatibility.
+4. Add that XML URL under **PyCharm -> Settings -> Plugins -> gear ->
+   Manage Plugin Repositories** and set the installed plugin's **Updates
+   from** source to that custom repository.
+5. Create `docs/index.html`, `docs/sitemap.xml`, and `docs/robots.txt`
+   so the Pages root has a public, discoverable project homepage.
+6. Add the **URL prefix** Pages site to Google Search Console. Download
+   Google's unique HTML verification file, commit it unchanged into
+   `docs/`, wait for deployment, verify its public URL, and click
+   **Verify**. Keep that file in place.
+7. In Search Console, submit `sitemap.xml`, inspect the homepage URL,
+   and request indexing when available. Verification and sitemap
+   submission do **not** guarantee indexing or ranking.
+
+Resource Navigator's Pages root is
+`https://jschelert1.github.io/resource-navigator/`; the plugin feed
+is `https://jschelert1.github.io/resource-navigator/updatePlugins.xml`.
+For a different repository, replace the GitHub owner, repository, plugin
+ID, ZIP filename, and version. Do not reuse the Resource Navigator Google
+verification token.
+
+**Every release**, independently of Google indexing, still requires
+the post-publication update of `docs/updatePlugins.xml` in section 7A.
+The update feed is distribution metadata: update it only after the new
+GitHub Release ZIP is publicly downloadable. Do not retag the release.
+
+**Routine updates:** keep the homepage and sitemap accurate when public
+features, installation requirements, or canonical URLs change; check
+Search Console for indexing problems when useful. Do not request a new
+Google verification for every plugin release.
+
