@@ -3,6 +3,7 @@ package com.jschelert.resourcenavigator.inspection
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.util.PsiTreeUtil
 import com.jetbrains.python.psi.PyElementVisitor
 import com.jetbrains.python.psi.PyStringLiteralExpression
 import com.jschelert.resourcenavigator.config.ResourceNavigatorSettings
@@ -146,6 +147,21 @@ class MissingResourceInspection : LocalInspectionTool() {
                     PythonResourceContext.evaluationExpression(node)
 
                 //
+                // A pathlib chain such as ROOT / "folder" / "link.pdf"
+                // contains multiple literals, each of which resolves to the
+                // same full expression. Inspect its rightmost literal only,
+                // while leaving each literal navigable by the reference provider.
+                //
+                if (expression !== node) {
+                    val rightmost = PsiTreeUtil.findChildrenOfType(
+                        expression,
+                        PyStringLiteralExpression::class.java,
+                    ).maxByOrNull { it.textRange.startOffset }
+                    if (rightmost != null && rightmost !== node) {
+                        return
+                    }
+                }
+
                 // Resolve the complete compile-time expression.
                 //
                 val resolved =
