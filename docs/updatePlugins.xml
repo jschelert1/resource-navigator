@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugins>
   <plugin id="com.jschelert.resource-navigator"
-          url="https://github.com/jschelert1/resource-navigator/releases/download/v2.2.2/resource-navigator-2.2.2.zip"
-          version="2.2.2">
+          url="https://github.com/jschelert1/resource-navigator/releases/download/v2.2.3/resource-navigator-2.2.3.zip"
+          version="2.2.3">
     <name>Resource Navigator</name>
     <description>Python resource navigation and missing-resource inspection for PyCharm.</description>
     <vendor>James Schelert</vendor>
