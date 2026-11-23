@@ -748,6 +748,32 @@ It should not duplicate resource classification, compile-time evaluation, or ext
 
 ---
 
+# GitHub-First Development and Release Workflow
+
+The primary source-of-truth branch is GitHub `main`. When a GitHub-connected
+assistant or other contributor makes changes directly to the repository, those
+changes are committed remotely first. The local IntelliJ IDEA checkout is then
+synchronized by pulling `origin/main`; it is not the required origin of
+every new commit.
+
+Before pulling, inspect and preserve uncommitted local changes. Review remote
+commits, run the complete test suite, and build the plugin ZIP locally. If a
+validation issue requires a correction, commit it to GitHub (or explicitly push
+a local correction), resynchronize, and validate again. Do not create a
+superfluous local commit merely to publish a release.
+
+Release tags are created from the GitHub Releases interface **after** all
+release source and documentation changes are committed. The tag must point to
+the final validated release commit on `main`, not an earlier local working
+state. Publish the release with the locally built ZIP attached. Avoid creating
+the same tag separately in IntelliJ IDEA.
+
+For the full procedure, including versioning, release ZIP verification,
+publication, installation, and smoke tests, see
+[README_DEVELOPER_COMMIT.md](README_DEVELOPER_COMMIT.md).
+
+---
+
 # Development Environment and Compatibility
 
 The authoritative source-tree version is defined by the `version` property in `gradle.properties`; published versions are identified by the corresponding GitHub release and Git tag. This guide uses explicit version numbers only for historical architecture and compatibility context.
@@ -788,7 +814,7 @@ Run the complete automated suite with:
 The current regression suite includes coverage for:
 
 * resource classification behavior
-* GitHub Issues #1–#10 regression coverage
+* GitHub Issues #1–#14 regression coverage, including #12–#14 false-positive diagnostics
 * Issue #9 missing-resource policy and false-positive classification cases
 * Issue #10 bracketed-versus-quoted docstring resource behavior
 * positive missing-resource diagnostics
