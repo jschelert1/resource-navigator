@@ -440,7 +440,8 @@ object ResourceClassifier {
                 isGlobPattern(value) ||
                 isSeparatorOnlyPath(value) ||
                 isCommandLineSwitch(value) ||
-                isForeignAndroidStoragePath(value)
+                isForeignAndroidStoragePath(value) ||
+                isDescriptiveWindowsPath(value)
 
     /**
      * Android device storage paths are not host-local Windows resources.
@@ -455,6 +456,14 @@ object ResourceClassifier {
         val roots = listOf("/storage/emulated", "/sdcard", "/mnt/sdcard")
         return roots.any { root -> path == root || path.startsWith("$root/") }
     }
+
+    /**
+     * A prose prefix followed by an absolute Windows path is a description,
+     * not itself a path. In particular, adjacent raw Python string literals
+     * may concatenate to "Label: C:\\folder\\file.xlsm".
+     */
+    private fun isDescriptiveWindowsPath(value: String): Boolean =
+        Regex("""^[^\\r\\n]+:\\s+[A-Za-z]:[\\\\/]""").containsMatchIn(value)
 
     /**
      * Return true when a value has enough filesystem structure for Balanced
