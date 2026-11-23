@@ -439,7 +439,22 @@ object ResourceClassifier {
                 value.startsWith(".") ||
                 isGlobPattern(value) ||
                 isSeparatorOnlyPath(value) ||
-                isCommandLineSwitch(value)
+                isCommandLineSwitch(value) ||
+                isForeignAndroidStoragePath(value)
+
+    /**
+     * Android device storage paths are not host-local Windows resources.
+     * Restrict this exclusion to Windows missing-resource diagnostics; Unix
+     * hosts retain their normal absolute-path inspection behavior.
+     */
+    private fun isForeignAndroidStoragePath(value: String): Boolean {
+        if (!System.getProperty("os.name", "").startsWith("Windows", ignoreCase = true))
+            return false
+
+        val path = value.replace('\\', '/')
+        val roots = listOf("/storage/emulated", "/sdcard", "/mnt/sdcard")
+        return roots.any { root -> path == root || path.startsWith("$root/") }
+    }
 
     /**
      * Return true when a value has enough filesystem structure for Balanced
