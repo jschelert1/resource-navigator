@@ -247,6 +247,21 @@ class MissingResourceInspectionTest : BasePlatformTestCase() {
         assertNoMissingWarnings()
     }
 
+    /** Issue #12: adjacent raw literals with a prose prefix are not a file path. */
+    fun testIssue12AdjacentRawWindowsPathWithDescriptionDoesNotWarn() {
+        myFixture.configureByText(
+            "issue12_adjacent_raw_prose.py",
+            """
+            summary = (
+                "Local spreadsheet source, worksheet Calibration: "
+                r"C:\Users\example\Documents\Research\Excel"
+                r"\Calibration.xlsm"
+            )
+            """.trimIndent(),
+        )
+        assertNoMissingWarnings()
+    }
+
     private fun assertNoMissingWarnings() {
 
         val warnings = myFixture.doHighlighting()
