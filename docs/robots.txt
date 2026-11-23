@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jschelert1.github.io/resource-navigator/sitemap.xml
