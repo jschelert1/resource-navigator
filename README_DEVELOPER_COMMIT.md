@@ -205,6 +205,21 @@ Publishing creates the tag when **Create new tag on publish** was selected.
 
 ---
 
+# 7A. Publish the Automatic-Update Feed
+
+After the GitHub Release is published and its ZIP asset is available:
+
+1. Verify that the release tag and exact `resource-navigator-x.y.z.zip` asset exist on GitHub.
+2. Update `docs/updatePlugins.xml` on GitHub `main`: set the `<plugin>` `version` to the published version and `url` to the exact GitHub Release ZIP download URL.
+3. Preserve the plugin ID and minimum IDE compatibility metadata.
+4. Commit the updated descriptor to `main`; GitHub Pages deploys it from `/docs`.
+5. Verify that `https://jschelert1.github.io/resource-navigator/updatePlugins.xml` serves the new version and asset URL, and that the ZIP URL is downloadable.
+6. In PyCharm, confirm the custom repository is configured and Resource Navigator's **Updates from** source selects that repository; check that the new version is offered.
+
+This is a post-release distribution-metadata commit. **Do not move or recreate the published release tag.**
+
+---
+
 # 8. Install the New Plugin
 
 ## Remove Previous Version
@@ -298,7 +313,9 @@ Attach release ZIP and publish
         ↓
 GitHub creates vX.Y.Z tag on publish
         ↓
-Install new plugin and smoke test
+Update docs/updatePlugins.xml on GitHub main and verify GitHub Pages feed
+        ↓
+Install/update plugin and smoke test
 ```
 
 ---
@@ -318,5 +335,7 @@ Install new plugin and smoke test
 - [ ] Release target verified as the final `main` commit
 - [ ] GitHub Release notes prepared and ZIP attached
 - [ ] GitHub Release published and `vX.Y.Z` tag created or selected
+- [ ] `docs/updatePlugins.xml` updated to published version and exact ZIP asset URL
+- [ ] GitHub Pages update feed verified and PyCharm update discovery checked
 - [ ] Release ZIP and plugin version verified
 - [ ] New plugin installed and final smoke tests passed
