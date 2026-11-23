@@ -6,6 +6,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.jetbrains.python.psi.PyStringLiteralExpression
 import com.jschelert.resourcenavigator.config.ResourceNavigatorSettings
+import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -377,6 +378,23 @@ object ResourceResolver {
                     resolvedValue = resolvedValue,
                     path = path,
                     file = virtualFile,
+                )
+            }
+        }
+
+        //
+        // The IntelliJ VFS may lag behind new files created by external tools
+        // (e.g. Chat Manager exports). Check the real filesystem before reporting
+        // a resource missing, without forcing a VFS refresh under a read lock.
+        //
+        candidatePaths.forEach { path ->
+            if (Files.exists(path)) {
+                return ResourceTarget(
+                    sourceValue = sourceValue,
+                    resolvedValue = resolvedValue,
+                    kind = ResourceKind.LOCAL_FILE,
+                    resolvedPath = path.normalize().toString(),
+                    exists = true,
                 )
             }
         }
