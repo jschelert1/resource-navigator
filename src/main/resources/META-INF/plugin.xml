@@ -2,6 +2,7 @@
     <id>com.jschelert.resource-navigator</id>
     <name>Resource Navigator</name>
     <vendor>James Schelert</vendor>
+    <url>https://github.com/jschelert1/resource-navigator</url>
     <description><![CDATA[
     Makes local file paths and URLs in supported Python string expressions directly navigable.
 
