@@ -43,7 +43,7 @@ version=1.1.2
 
 # 3. Update Documentation
 
-Update any release documentation before creating the release commit.
+Update release documentation directly on GitHub before the release tag is created. Changes made by an assistant or other GitHub-connected contributor are committed to `main` first; the local IntelliJ IDEA checkout then pulls those commits.
 
 Typical files include:
 
@@ -87,61 +87,51 @@ Verify the plugin builds successfully before creating the release.
 
 ---
 
-# 5. Create the Git Release Tag
+# 5. Synchronize, Test, and Build the Final Release Commit
 
-> **IntelliJ IDEA workflow:** Create the release tag before opening the final
-> Commit and Push dialog. IntelliJ IDEA allows the locally created tag to be
-> included together with the selected release files during the final commit/push
-> workflow. Therefore, Resource Navigator intentionally uses a tag-first release
-> procedure. Do not reorder these steps to use a commit-first workflow.
+> **GitHub-first workflow:** Source and documentation changes are authored and
+> committed directly to GitHub `main`. IntelliJ IDEA is used to pull those
+> commits, run validation, and generate the release ZIP. Do not create a release
+> tag before the final source and documentation commits exist.
 
-Create a Git tag pointing to the current release.
+1. Confirm all proposed source, version, tests, and documentation edits have
+   been committed to the GitHub `main` branch.
+2. In IntelliJ IDEA, check for local uncommitted changes. Preserve or reconcile
+   them before pulling; do not overwrite local work.
+3. Pull `origin/main` and verify the local checkout is synchronized.
+4. Run `./gradlew test`, then build the distributable ZIP in
+   `build/distributions/`. Run `verifyPlugin` when compatibility validation
+   is required.
+5. Run the manual IDE smoke tests appropriate to the release.
+6. If validation reveals a problem, make and commit the fix on GitHub (or
+   intentionally commit and push a local fix), pull again, and repeat validation.
+7. Confirm the ZIP version matches `gradle.properties` and corresponds to the
+   final GitHub `main` commit.
 
-Example:
-
-```text
-v1.1.2
-```
-
-The tag should represent the exact released source code.
-
-Once published, the tag should never be moved.
+Avoid an extra empty local commit simply to facilitate tagging. In this
+workflow, the final release commit ordinarily already exists on GitHub.
 
 ---
 
-# 6. Commit and Push
+# 6. Create the Git Release Tag on GitHub
 
-Commit all release changes together.
+After the final validated code and documentation commits are on `main`,
+create the release tag through the GitHub Releases interface:
 
-The release commit should contain:
+1. Open the repository's **Releases** page.
+2. Select **Draft a new release**.
+3. Choose **Choose a tag**, type `vX.Y.Z`, and select
+   **Create new tag: vX.Y.Z on publish**.
+4. Set the tag target to the intended final `main` commit.
+5. Prepare release notes and the validated plugin ZIP.
+6. Publish the release; GitHub creates the tag at publication.
 
-- Source code
-- Version increment
-- README updates
-- Developer documentation
-- Any other release-related changes
+For example, use `v2.2.2` for `version=2.2.2`.
 
-Example commit message:
-
-```text
-Added glob pattern detection, reorganized regression tests, and improved handling of unsupported resource references.
-```
-
-Use:
-
-```text
-Commit and Push
-```
-
-Options:
-
-```
-✓ Push Tags
-✗ Amend Last Commit
-```
-
-Because the tag already exists locally, both the release commit and the release
-tag are pushed together.
+**Do not** also create the same tag in IntelliJ IDEA or push a second copy.
+If the tag already exists, select the existing tag rather than creating it
+again. Once published, the release tag must not be moved. Never tag an earlier
+commit that omits release documentation or fixes.
 
 ---
 
@@ -154,16 +144,16 @@ Releases
     → Draft New Release
 ```
 
-Select the existing tag:
+Select the tag created by GitHub when publishing (or select an existing tag if one was already created):
 
 ```text
-v1.1.2
+vX.Y.Z
 ```
 
 Release title:
 
 ```text
-Resource Navigator v1.1.2
+Resource Navigator vX.Y.Z
 ```
 
 Attach:
@@ -172,7 +162,9 @@ Attach:
 resource-navigator-x.y.z.zip
 ```
 
-Publish the release.
+Before publishing, check that the selected target is the final validated `main`
+commit and that the attached ZIP was built from that same source version.
+Publishing creates the tag when **Create new tag on publish** was selected.
 
 ---
 
@@ -250,42 +242,44 @@ Verify:
 
 # Release Timeline
 
-```
-Complete development
+```text
+Complete development / regression tests
         ↓
-Run automated test suite
+Commit source, version, and documentation directly on GitHub main
         ↓
-Increment version
+Pull origin/main in IntelliJ IDEA
         ↓
-Update README/documentation
+Run automated tests and build release ZIP locally
         ↓
-Build plugin ZIP
+Perform IDE validation and verify plugin version
         ↓
-Create Git release tag
+If fixes are needed: commit to GitHub, pull, and validate again
         ↓
-Commit and Push
+Draft GitHub Release targeting final main commit
         ↓
-Create GitHub Release
+Attach release ZIP and publish
         ↓
-Upload release ZIP
+GitHub creates vX.Y.Z tag on publish
         ↓
-Install new plugin
-        ↓
-Smoke test
+Install new plugin and smoke test
 ```
 
 ---
 
 # Release Checklist
 
-- [ ] Development complete
+- [ ] Development and regression test updates complete
+- [ ] `gradle.properties` version incremented
+- [ ] README/developer documentation updated
+- [ ] All release changes committed to GitHub `main`
+- [ ] Local uncommitted changes reviewed and preserved
+- [ ] IntelliJ IDEA pulled the final `origin/main` commit
 - [ ] Automated test suite passed (`./gradlew test`)
-- [ ] Version incremented
-- [ ] Documentation updated
-- [ ] Plugin builds successfully
-- [ ] Git tag created
-- [ ] Commit and Push completed (Push Tags checked)
-- [ ] GitHub Release published
-- [ ] Release ZIP uploaded
-- [ ] Plugin installed
-- [ ] Smoke tests passed
+- [ ] Plugin ZIP built successfully from the final source
+- [ ] Plugin verifier run when applicable
+- [ ] Local IDE validation and smoke tests passed
+- [ ] Release target verified as the final `main` commit
+- [ ] GitHub Release notes prepared and ZIP attached
+- [ ] GitHub Release published and `vX.Y.Z` tag created or selected
+- [ ] Release ZIP and plugin version verified
+- [ ] New plugin installed and final smoke tests passed
