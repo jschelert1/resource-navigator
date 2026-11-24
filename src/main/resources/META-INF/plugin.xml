@@ -1,4 +1,4 @@
-<idea-plugin>
+<idea-plugin url="https://jschelert1.github.io/resource-navigator/">
     <id>com.jschelert.resource-navigator</id>
     <name>Resource Navigator</name>
     <vendor>James Schelert</vendor>
