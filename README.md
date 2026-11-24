@@ -1,5 +1,9 @@
 # Resource Navigator
 
+[![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/36417?label=JetBrains%20Marketplace)](https://plugins.jetbrains.com/plugin/36417-resource-navigator)
+
+Install Resource Navigator from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/36417-resource-navigator) or use the [GitHub Releases](https://github.com/jschelert1/resource-navigator/releases) distribution.
+
 Resource Navigator is a PyCharm plugin that transforms Python resource strings and compile-time resource expressions containing local files, project resources, and URLs into first-class IDE navigation targets.
 
 The plugin integrates with **Go to Declaration (Ctrl+Click)**, **Quick Documentation**, **editor context actions**, and **resource inspections** so that images, PDFs, Office documents, source files, web pages, directories, and other resources can be navigated as naturally as Python symbols.
