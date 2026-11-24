@@ -12,6 +12,8 @@ Resource Navigator release.
 - Update regression tests.
 - Run the complete automated test suite (`./gradlew test`) and verify all tests pass.
 - Perform a quick manual validation in the development IDE.
+- For descriptor changes, run `./gradlew test --tests "*PluginDescriptorTest"`.
+  The complete test suite remains mandatory before release.
 
 ---
 
@@ -222,7 +224,14 @@ This is a post-release distribution-metadata commit. **Do not move or recreate t
 
 # 8. Install the New Plugin
 
-## Remove Previous Version
+## Preferred: Update through the custom repository
+
+After section 7A, use the configured custom repository to update the installed
+plugin. Verify the displayed version and restart only if the IDE requests it.
+Use the disk-install procedure below as a fallback, not a mandatory step for
+routine updates.
+
+## Remove Previous Version (manual fallback)
 
 ```
 Settings
@@ -289,6 +298,7 @@ Verify:
 - Bracketed resources inside Python docstrings navigate when present and warn when missing.
 - Missing-resource Conservative, Balanced, and Aggressive policies behave as documented.
 - The regression test file behaves as expected.
+- The installed plugin shows the Plugin homepage link and correct action labels.
 
 ---
 
