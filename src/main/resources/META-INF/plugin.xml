@@ -33,8 +33,10 @@
         <localInspection
                 language="Python"
                 shortName="MissingResource"
-                displayName="%inspection.missingResource.displayName"
-                groupName="%inspection.missingResource.groupName"
+                key="inspection.missingResource.displayName"
+                bundle="messages.ResourceBundle"
+                groupKey="inspection.missingResource.groupName"
+                groupBundle="messages.ResourceBundle"
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.jschelert.resourcenavigator.inspection.MissingResourceInspection"/>
@@ -42,7 +44,8 @@
         <applicationConfigurable
                 parentId="tools"
                 id="com.jschelert.resource-navigator.settings"
-                displayName="%settings.displayName"
+                key="settings.displayName"
+                bundle="messages.ResourceBundle"
                 instance="com.jschelert.resourcenavigator.config.ResourceNavigatorConfigurable"/>
 
         <applicationService
@@ -54,23 +57,17 @@
 
     </extensions>
 
-    <actions>
+    <actions resource-bundle="messages.ResourceBundle">
         <action id="ResourceNavigator.OpenResource"
-                class="com.jschelert.resourcenavigator.actions.OpenResourceAction"
-                text="%action.openResource.text"
-                description="%action.openResource.description">
+                class="com.jschelert.resourcenavigator.actions.OpenResourceAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
         <action id="ResourceNavigator.RevealResource"
-                class="com.jschelert.resourcenavigator.actions.RevealResourceAction"
-                text="%action.revealResource.text"
-                description="%action.revealResource.description">
+                class="com.jschelert.resourcenavigator.actions.RevealResourceAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
         <action id="ResourceNavigator.CopyFullPath"
-                class="com.jschelert.resourcenavigator.actions.CopyFullPathAction"
-                text="%action.copyFullPath.text"
-                description="%action.copyFullPath.description">
+                class="com.jschelert.resourcenavigator.actions.CopyFullPathAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
     </actions>
