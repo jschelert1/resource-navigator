@@ -222,6 +222,26 @@ This is a post-release distribution-metadata commit. **Do not move or recreate t
 
 ---
 
+# 7B. Publish the JetBrains Marketplace Update
+
+After the initial listing is approved, publish the same validated ZIP used
+for GitHub Releases to the existing Marketplace listing:
+
+- Open https://plugins.jetbrains.com/plugin/36417-resource-navigator and sign in.
+- Select **Upload Update**, choose `build/distributions/resource-navigator-x.y.z.zip`,
+  and use the default stable channel (leave the channel blank if appropriate).
+- Submit the update and inspect Plugin Verifier results and moderation status.
+- Wait for approval/public availability; verify the version in Marketplace
+  and in PyCharm. Check the Plugin homepage link and resource navigation.
+- Continue section 7A for existing custom-repository users. Do not move tags,
+  change the plugin ID, or create a new Marketplace listing for each release.
+
+Automated Marketplace publishing via Gradle or GitHub Actions is future work,
+not yet implemented. Use a securely stored Marketplace publishing token if
+automation is added; never commit credentials.
+
+---
+
 # 8. Install the New Plugin
 
 ## Preferred: Update through the custom repository
@@ -325,6 +345,8 @@ GitHub creates vX.Y.Z tag on publish
         ↓
 Update docs/updatePlugins.xml on GitHub main and verify GitHub Pages feed
         ↓
+Upload the same ZIP to Marketplace and check moderation (section 7B)
+        ↓
 Install/update plugin and smoke test
 ```
 
@@ -347,6 +369,8 @@ Install/update plugin and smoke test
 - [ ] GitHub Release published and `vX.Y.Z` tag created or selected
 - [ ] `docs/updatePlugins.xml` updated to published version and exact ZIP asset URL
 - [ ] GitHub Pages update feed verified and PyCharm update discovery checked
+- [ ] Marketplace update submitted and verifier/moderation status checked (section 7B)
+- [ ] Marketplace availability and IDE update discovery verified after approval
 - [ ] Release ZIP and plugin version verified
 - [ ] New plugin installed and final smoke tests passed
 
@@ -394,4 +418,67 @@ GitHub Release ZIP is publicly downloadable. Do not retag the release.
 features, installation requirements, or canonical URLs change; check
 Search Console for indexing problems when useful. Do not request a new
 Google verification for every plugin release.
+
+---
+
+# One-Time JetBrains Marketplace Registration
+
+Resource Navigator's initial submission was made on November 23, 2026,
+using v2.2.4. Moderation and Marketplace verifier results were pending at
+submission; local descriptor tests, full tests, buildPlugin and
+verifyPluginStructure had succeeded.
+
+## Registration procedure for a new public plugin
+
+1. Sign in at https://plugins.jetbrains.com/ and create the vendor profile.
+   Select the legally appropriate trader status (RN is Non-trader).
+2. Start a new plugin submission for **IntelliJ-based IDEs**, which includes
+   PyCharm. Actual compatibility is determined by plugin.xml dependencies
+   and build ranges, not by the broad upload category.
+3. Upload the validated Gradle distribution ZIP, not the source repository.
+   Keep the existing GitHub repository as the source of truth.
+4. Select the applicable license, pricing, source-code URL and relevant tags.
+   Use the default stable channel and leave Hidden unchecked for public distribution.
+5. Upload a real IDE screenshot (Marketplace recommends at least 1200 x 760
+   pixels). Avoid exposing private project information.
+6. Complete Getting Started, Documentation URL, Bugtracker and any optional
+   forum or custom contact links. Technical Information / Plugin Features is
+   derived from supported plugin.xml extension declarations, not free-form text.
+7. Submit for moderation, inspect Plugin Verifier results, and wait for the
+   approval email. Submission alone does not establish public availability.
+8. After approval, verify public listing, installation, compatibility and
+   update discovery in the target IDE. Verify whether the IDE's Plugin homepage
+   link now opens the Marketplace listing.
+
+## Resource Navigator registration record
+
+- Marketplace listing: https://plugins.jetbrains.com/plugin/36417-resource-navigator
+- Marketplace numeric ID: 36417
+- Plugin descriptor ID: com.jschelert.resource-navigator
+- Vendor: James Schelert; Non-trader
+- License: MIT; free; open source
+- Source: https://github.com/jschelert1/resource-navigator
+- Homepage: https://jschelert1.github.io/resource-navigator/
+- Documentation: https://github.com/jschelert1/resource-navigator#readme
+- Bugtracker: https://github.com/jschelert1/resource-navigator/issues
+- Forum: not configured
+- Tags: Code Editing, Code Quality, Code Tools, Inspection, Navigation, Productivity
+- Channel: default stable; SemVer Only enabled
+- Screenshot: Ctrl-hover navigation of a Python pathlib PDF reference in PyCharm.
+- Getting Started: install, open a Python project, Ctrl-hover and Ctrl-click a
+  supported resource reference; explain editor context actions and settings.
+
+## Marketplace website integration (after approval)
+
+Add a Marketplace listing link and version/download badges to README.md and
+the GitHub Pages homepage. The Marketplace provides optional card and install
+widgets using https://plugins.jetbrains.com/assets/scripts/mp-widget.js and
+`MarketplaceWidget.setupMarketplaceWidget('install', 36417, '#marketplace-install')`
+(or 'card' with a separate matching HTML element ID). Verify the widget and
+retain a normal listing link as a fallback. These are planned changes, not
+completed integration.
+
+For another plugin, use its own Marketplace numeric ID, descriptor ID, vendor,
+license and URLs. Keep the Google verification and custom update feed setup
+independent of Marketplace registration.
 
