@@ -15,6 +15,8 @@
     copying resolved resources.
     ]]></description>
 
+    <resource-bundle>messages.ResourceBundle</resource-bundle>
+
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.python</depends>
 
@@ -31,8 +33,8 @@
         <localInspection
                 language="Python"
                 shortName="MissingResource"
-                displayName="Unresolved Resource Reference"
-                groupName="Resource Navigator"
+                displayName="%inspection.missingResource.displayName"
+                groupName="%inspection.missingResource.groupName"
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.jschelert.resourcenavigator.inspection.MissingResourceInspection"/>
@@ -40,7 +42,7 @@
         <applicationConfigurable
                 parentId="tools"
                 id="com.jschelert.resource-navigator.settings"
-                displayName="Resource Navigator"
+                displayName="%settings.displayName"
                 instance="com.jschelert.resourcenavigator.config.ResourceNavigatorConfigurable"/>
 
         <applicationService
@@ -55,20 +57,20 @@
     <actions>
         <action id="ResourceNavigator.OpenResource"
                 class="com.jschelert.resourcenavigator.actions.OpenResourceAction"
-                text="Open Resource"
-                description="Open the resolved resource under the caret">
+                text="%action.openResource.text"
+                description="%action.openResource.description">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
         <action id="ResourceNavigator.RevealResource"
                 class="com.jschelert.resourcenavigator.actions.RevealResourceAction"
-                text="Reveal Resource in File Manager"
-                description="Reveal the resolved local resource under the caret">
+                text="%action.revealResource.text"
+                description="%action.revealResource.description">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
         <action id="ResourceNavigator.CopyFullPath"
                 class="com.jschelert.resourcenavigator.actions.CopyFullPathAction"
-                text="Copy Resource Full Path"
-                description="Copy the resolved absolute resource path">
+                text="%action.copyFullPath.text"
+                description="%action.copyFullPath.description">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
     </actions>
