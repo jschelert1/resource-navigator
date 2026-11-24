@@ -224,7 +224,7 @@ This is a post-release distribution-metadata commit. **Do not move or recreate t
 
 # 7B. Publish the JetBrains Marketplace Update
 
-After the initial listing is approved, publish the same validated ZIP used
+For every public release, publish the same validated ZIP used
 for GitHub Releases to the existing Marketplace listing:
 
 - Open https://plugins.jetbrains.com/plugin/36417-resource-navigator and sign in.
@@ -244,7 +244,13 @@ automation is added; never commit credentials.
 
 # 8. Install the New Plugin
 
-## Preferred: Update through the custom repository
+## Preferred: Update through JetBrains Marketplace
+
+After section 7B approval, open Settings → Plugins and check for updates from
+JetBrains Marketplace. For a new installation, search for Resource Navigator
+in the Marketplace tab. Verify the version and restart if requested.
+
+## Alternative: Update through the custom repository
 
 After section 7A, use the configured custom repository to update the installed
 plugin. Verify the displayed version and restart only if the IDE requests it.
@@ -347,6 +353,8 @@ Update docs/updatePlugins.xml on GitHub main and verify GitHub Pages feed
         ↓
 Upload the same ZIP to Marketplace and check moderation (section 7B)
         ↓
+Confirm Marketplace approval and public availability
+        ↓
 Install/update plugin and smoke test
 ```
 
@@ -426,7 +434,10 @@ Google verification for every plugin release.
 Resource Navigator's initial submission was made on November 23, 2026,
 using v2.2.4. Moderation and Marketplace verifier results were pending at
 submission; local descriptor tests, full tests, buildPlugin and
-verifyPluginStructure had succeeded.
+verifyPluginStructure had succeeded. JetBrains approved v2.2.4 on November 24,
+2026. The installed PyCharm plugin subsequently displayed the Marketplace
+homepage link, screenshot, description, and Getting Started content.
+Marketplace update delivery for a subsequent release remains to be tested.
 
 ## Registration procedure for a new public plugin
 
@@ -470,13 +481,15 @@ verifyPluginStructure had succeeded.
 
 ## Marketplace website integration (after approval)
 
-Add a Marketplace listing link and version/download badges to README.md and
-the GitHub Pages homepage. The Marketplace provides optional card and install
+Maintain the Marketplace listing link and version badge in README.md and
+the Marketplace installation widget on the GitHub Pages homepage. The Marketplace provides optional card and install
 widgets using https://plugins.jetbrains.com/assets/scripts/mp-widget.js and
 `MarketplaceWidget.setupMarketplaceWidget('install', 36417, '#marketplace-install')`
 (or 'card' with a separate matching HTML element ID). Verify the widget and
-retain a normal listing link as a fallback. These are planned changes, not
-completed integration.
+retain a normal listing link as a fallback. The README version badge and homepage install widget are maintained on `main`.
+The badge uses Shields.io Marketplace version data; the install widget is
+provided by JetBrains. Verify both after deployment and retain the direct
+Marketplace listing link.
 
 For another plugin, use its own Marketplace numeric ID, descriptor ID, vendor,
 license and URLs. Keep the Google verification and custom update feed setup
