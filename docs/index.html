@@ -44,7 +44,8 @@
     <h1>Navigate resources like Python symbols.</h1>
     <p class="lead">Resource Navigator turns recognized Python file paths, project resources, and web URLs into navigable IDE targets. Ctrl+Click to open resources, resolve supported static expressions, and catch missing files with configurable inspections.</p>
     <div class="buttons">
-      <a class="button" href="https://github.com/jschelert1/resource-navigator/releases/latest">Get the latest release</a>
+      <a class="button" href="https://plugins.jetbrains.com/plugin/36417-resource-navigator">Get it on JetBrains Marketplace</a>
+      <a class="button secondary" href="https://github.com/jschelert1/resource-navigator/releases/latest">GitHub release</a>
       <a class="button secondary" href="https://github.com/jschelert1/resource-navigator">Explore the source</a>
     </div>
   </div>
@@ -71,6 +72,10 @@ website = "https://www.python.org/"</code></pre>
   </section>
   <section id="installation">
     <h2>Install Resource Navigator</h2>
+    <p>In PyCharm, open <strong>Settings → Plugins → Marketplace</strong>, search for Resource Navigator, and select Install. You can also use the official Marketplace installation widget below.</p>
+    <div id="marketplace-install"></div>
+    <p><a href="https://plugins.jetbrains.com/plugin/36417-resource-navigator">Open the Marketplace listing</a> if the widget is unavailable.</p>
+    <h3>Alternative: install from GitHub</h3>
     <ol>
       <li>Download the latest <code>resource-navigator-*.zip</code> from <a href="https://github.com/jschelert1/resource-navigator/releases/latest">GitHub Releases</a>.</li>
       <li>In PyCharm, open <strong>Settings → Plugins</strong>, select the gear menu, and choose <strong>Install Plugin from Disk</strong>.</li>
@@ -80,6 +85,7 @@ website = "https://www.python.org/"</code></pre>
   </section>
   <section id="updates">
     <h2>Stay up to date</h2>
+    <p>Marketplace installations can receive updates through the IDE plugin manager. Existing custom-repository users may continue using the feed below.</p>
     <p>Resource Navigator publishes an <a href="updatePlugins.xml">IntelliJ-compatible custom plugin repository feed</a>. Add the URL below under <strong>Settings → Plugins → Manage Plugin Repositories</strong> and select that repository as Resource Navigator's <strong>Updates from</strong> source.</p>
     <pre><code>https://jschelert1.github.io/resource-navigator/updatePlugins.xml</code></pre>
     <p class="muted">The update feed points to release ZIP assets hosted on GitHub.</p>
@@ -94,5 +100,11 @@ website = "https://www.python.org/"</code></pre>
   </section>
 </main>
 <footer>Resource Navigator · James Schelert · <a href="https://github.com/jschelert1/resource-navigator">GitHub repository</a></footer>
+<script src="https://plugins.jetbrains.com/assets/scripts/mp-widget.js"></script>
+<script>
+  if (typeof MarketplaceWidget !== "undefined") {
+    MarketplaceWidget.setupMarketplaceWidget("install", 36417, "#marketplace-install");
+  }
+</script>
 </body>
 </html>
