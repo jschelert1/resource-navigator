@@ -803,6 +803,23 @@ verifyPlugin
 
 # Automated Testing Architecture
 
+## Plugin descriptor regression tests (introduced in v2.2.4)
+
+`PluginDescriptorTest.kt` checks the plugin homepage URL, required dependencies,
+resource bundle keys, inspection and settings localization declarations, and
+actual action text and descriptions through IntelliJ's `ActionManager`.
+Use the root `idea-plugin` URL attribute, not a child `url` element. Inspection
+localization uses `key`/`bundle` and `groupKey`/`groupBundle`; configurable
+localization uses `key`/`bundle`. Actions use the resource bundle and keys
+`action.<action-id>.text` and `action.<action-id>.description`, not `%key`
+attributes. Preserve the product name and use sentence capitalization for
+inspection labels. See [JetBrains internationalization](https://plugins.jetbrains.com/docs/intellij/internationalization.html).
+
+Run `./gradlew test --tests "*PluginDescriptorTest"` for focused validation,
+then `./gradlew test` for the full suite. The homepage link in the installed
+plugin UI still requires a manual acceptance test.
+
+
 Resource Navigator uses both ordinary unit tests and IntelliJ Platform/PyCharm fixture tests. The automated suite exercises resource classification, inspection behavior, Python PSI reference contribution, compile-time path evaluation, and resolved navigation targets.
 
 Run the complete automated suite with:
